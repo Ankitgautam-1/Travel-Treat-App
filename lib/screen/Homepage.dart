@@ -11,14 +11,20 @@ class Homepage extends StatefulWidget {
   _HomepageState createState() => _HomepageState();
 }
 
-void logoutgoogleuser() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.remove('email');
-  await GoogleSignIn().signOut();
-  await FirebaseAuth.instance.signOut();
-}
-
 class _HomepageState extends State<Homepage> {
+  void logoutgoogleuser() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('email');
+    await GoogleSignIn().signOut();
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SignIn(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,16 +34,9 @@ class _HomepageState extends State<Homepage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ElevatedButton(
-                onPressed: () {
-                  logoutgoogleuser();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SignIn(),
-                    ),
-                  );
-                },
-                child: Text('Log Out'))
+              onPressed: logoutgoogleuser,
+              child: Text('Log Out'),
+            ),
           ],
         ),
       ),

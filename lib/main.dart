@@ -1,5 +1,6 @@
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:app/screen/Homepage.dart';
+import 'package:app/screen/Welcome.dart';
 import 'package:app/screen/sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -50,7 +51,7 @@ class _MyAppState extends State<MyApp> {
       duration: 5500,
       splash: 'asset/Animation/cab-animation.gif',
       backgroundColor: Colors.white,
-      nextScreen: email == "" ? SignIn() : Homepage(),
+      nextScreen: email == "" ? Welcome() : Homepage(),
       splashIconSize: 350,
     );
   }

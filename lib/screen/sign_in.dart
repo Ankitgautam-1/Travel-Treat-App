@@ -68,33 +68,33 @@ class _SignInState extends State<SignIn> {
     }
   }
 
-  Future signInWithGoogle() async {
-    // Trigger the authentication flow
-    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+  // Future signInWithGoogle() async {
+  //   // Trigger the authentication flow
+  //   final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-    // Obtain the auth details from the request
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser!.authentication;
+  //   // Obtain the auth details from the request
+  //   final GoogleSignInAuthentication googleAuth =
+  //       await googleUser!.authentication;
 
-    // Create a new credential
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    print('Login');
-    // Once signed in, return the UserCredential
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Homepage(),
-      ),
-    );
-    await FirebaseAuth.instance.signInWithCredential(credential);
-    User? user = FirebaseAuth.instance.currentUser;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('email', user!.email!);
-    print('here :  $user');
-  }
+  //   // Create a new credential
+  //   final credential = GoogleAuthProvider.credential(
+  //     accessToken: googleAuth.accessToken,
+  //     idToken: googleAuth.idToken,
+  //   );
+  //   print('Login');
+  //   // Once signed in, return the UserCredential
+  //   Navigator.pushReplacement(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => Homepage(),
+  //     ),
+  //   );
+  //   await FirebaseAuth.instance.signInWithCredential(credential);
+  //   User? user = FirebaseAuth.instance.currentUser;
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   prefs.setString('email', user!.email!);
+  //   print('here :  $user');
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -242,26 +242,26 @@ class _SignInState extends State<SignIn> {
               //     ),
               //   ),
               // ),
-              Center(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    primary: Colors.black,
-                    shape: StadiumBorder(),
-                  ),
-                  label: Text(
-                    'Sign In with Google',
-                    style: TextStyle(fontFamily: 'Ubuntu', fontSize: 17),
-                  ),
-                  icon: FaIcon(
-                    FontAwesomeIcons.google,
-                    color: Colors.black,
-                  ),
-                  onPressed: signInWithGoogle,
-                ),
-              ),
-              SizedBox(
-                height: 20,
-              ),
+              // Center(
+              //   child: OutlinedButton.icon(
+              //     style: OutlinedButton.styleFrom(
+              //       primary: Colors.black,
+              //       shape: StadiumBorder(),
+              //     ),
+              //     label: Text(
+              //       'Sign In with Google',
+              //       style: TextStyle(fontFamily: 'Ubuntu', fontSize: 17),
+              //     ),
+              //     icon: FaIcon(
+              //       FontAwesomeIcons.google,
+              //       color: Colors.black,
+              //     ),
+              //     onPressed: signInWithGoogle,
+              //   ),
+              // ),
+              // SizedBox(
+              //   height: 20,
+              // ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

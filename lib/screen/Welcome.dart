@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Welcome extends StatefulWidget {
   const Welcome({Key? key}) : super(key: key);
@@ -18,6 +17,40 @@ class Welcome extends StatefulWidget {
 class _WelcomeState extends State<Welcome> {
   final fb = FirebaseDatabase.instance;
 
+  // Future signInWithGoogle() async {
+  //   // Trigger the authentication flow
+  //   final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+  //   // Obtain the auth details from the request
+  //   final GoogleSignInAuthentication googleAuth =
+  //       await googleUser!.authentication;
+
+  //   // Create a new credential
+  //   final credential = GoogleAuthProvider.credential(
+  //     accessToken: googleAuth.accessToken,
+  //     idToken: googleAuth.idToken,
+  //   );
+  //   print('Login');
+  //   // Once signed in, return the UserCredential
+  //   await FirebaseAuth.instance.signInWithCredential(credential);
+  //   User? user = FirebaseAuth.instance.currentUser;
+  //   // final ref=fb.reference();
+  //   // ref
+  //   // ..child('User')
+  //   //   ..push()
+  //   //   ..child('Useranme')
+  //   //   ..set('$user');
+  //   print("Photo url  :");
+  //   print(user!.photoURL);
+  //   print('here :  $user');
+
+  //   Navigator.pushReplacement(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => Homepage(),
+  //     ),
+  //   );
+  // }
   Future signInWithGoogle() async {
     // Trigger the authentication flow
     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -33,24 +66,17 @@ class _WelcomeState extends State<Welcome> {
     );
     print('Login');
     // Once signed in, return the UserCredential
-    await FirebaseAuth.instance.signInWithCredential(credential);
-    User? user = FirebaseAuth.instance.currentUser;
-    // final ref=fb.reference();
-    // ref
-    // ..child('User')
-    //   ..push()
-    //   ..child('Useranme')
-    //   ..set('$user');
-    print("Photo url  :");
-    print(user!.photoURL);
-    print('here :  $user');
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => Homepage(),
       ),
     );
+    await FirebaseAuth.instance.signInWithCredential(credential);
+    User? user = FirebaseAuth.instance.currentUser;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('email', user!.email!);
+    print('here :  $user');
   }
 
   @override
