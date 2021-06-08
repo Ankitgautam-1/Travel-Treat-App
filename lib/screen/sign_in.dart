@@ -1,8 +1,9 @@
-import 'package:app/Homepage.dart';
+import 'package:app/screen/Homepage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignIn extends StatefulWidget {
   @override
@@ -61,8 +62,7 @@ class _SignInState extends State<SignIn> {
 
   void signin() async {
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInAnonymously();
+      await FirebaseAuth.instance.signInAnonymously();
     } catch (e) {
       print(e);
     }
@@ -91,7 +91,8 @@ class _SignInState extends State<SignIn> {
     );
     await FirebaseAuth.instance.signInWithCredential(credential);
     User? user = FirebaseAuth.instance.currentUser;
-
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('email', user!.email!);
     print('here :  $user');
   }
 
