@@ -1,3 +1,4 @@
+import 'package:app/screen/Const.dart';
 import 'package:app/screen/Homepage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -101,23 +102,28 @@ class _SignInState extends State<SignIn> {
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.white,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: Const.maincolor,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          elevation: 0,
+          backgroundColor: Colors.white,
+          toolbarHeight: 40,
+        ),
         body: SingleChildScrollView(
           child: Column(
             children: [
-              SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.only(right: 600),
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: Icon(Icons.arrow_back_ios),
-                ),
-              ),
               Text(
                 'Sign In',
                 style: TextStyle(
                   fontSize: 32,
+                  color: Const.maincolor,
                 ),
               ),
               SizedBox(height: 30),
@@ -148,6 +154,7 @@ class _SignInState extends State<SignIn> {
                           hintText: 'Enter a email',
                           prefixIcon: Icon(
                             Icons.mail_outline,
+                            color: Const.maincolor,
                           ),
                           labelStyle:
                               TextStyle(fontFamily: 'Ubuntu', fontSize: 18),
@@ -170,9 +177,9 @@ class _SignInState extends State<SignIn> {
                           border: OutlineInputBorder(),
                           labelText: 'Password',
                           hintText: 'Enter your password',
-                          hoverColor: Colors.blueGrey,
                           prefixIcon: Icon(
                             Icons.lock,
+                            color: Const.maincolor,
                           ),
                           labelStyle:
                               TextStyle(fontFamily: 'Ubuntu', fontSize: 18),
@@ -197,7 +204,7 @@ class _SignInState extends State<SignIn> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 10, horizontal: 80),
-                  primary: Colors.black87,
+                  primary: Const.maincolor,
                   onPrimary: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25.0),
@@ -219,49 +226,6 @@ class _SignInState extends State<SignIn> {
               SizedBox(
                 height: 20,
               ),
-              // ElevatedButton(
-              //   style: ElevatedButton.styleFrom(
-              //     padding: EdgeInsets.symmetric(vertical: 10, horizontal: 80),
-              //     primary: Colors.black87,
-              //     onPrimary: Colors.white,
-              //     shape: RoundedRectangleBorder(
-              //       borderRadius: BorderRadius.circular(25.0),
-              //     ),
-              //   ),
-              //   onPressed: () {
-              //     try {
-              //       // loginwithemail();
-              //       signin();
-              //       print('Done');
-              //     } catch (e) {}
-              //   },
-              //   child: Text(
-              //     'Sign',
-              //     style: TextStyle(
-              //       fontSize: 16,
-              //     ),
-              //   ),
-              // ),
-              // Center(
-              //   child: OutlinedButton.icon(
-              //     style: OutlinedButton.styleFrom(
-              //       primary: Colors.black,
-              //       shape: StadiumBorder(),
-              //     ),
-              //     label: Text(
-              //       'Sign In with Google',
-              //       style: TextStyle(fontFamily: 'Ubuntu', fontSize: 17),
-              //     ),
-              //     icon: FaIcon(
-              //       FontAwesomeIcons.google,
-              //       color: Colors.black,
-              //     ),
-              //     onPressed: signInWithGoogle,
-              //   ),
-              // ),
-              // SizedBox(
-              //   height: 20,
-              // ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -277,7 +241,7 @@ class _SignInState extends State<SignIn> {
                       ' Sign Up',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.blue,
+                        color: Const.maincolor,
                       ),
                     ),
                   ),

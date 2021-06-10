@@ -1,13 +1,16 @@
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:app/screen/Homepage.dart';
 import 'package:app/screen/Welcome.dart';
+import 'package:app/screen/Dashboard.dart';
+import 'package:app/screen/number_verify.dart';
+import 'package:app/screen/otp.dart';
 import 'package:app/screen/sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-var email = "";
+var email;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -18,7 +21,9 @@ Future<void> main() async {
         fontFamily: 'Ubuntu',
       ),
       home: SafeArea(
-        child: MyApp(),
+        child:
+            // Otpverify(verificationId: '123456', num: '12334') //!Change here
+            MyApp(),
       ),
     ),
   );
@@ -39,7 +44,12 @@ class _MyAppState extends State<MyApp> {
 
   void checkemail() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    email = prefs.getString('email')!;
+    if (prefs.getString('email') != null) {
+      email = prefs.getString('email')!;
+    } else {
+      email = "";
+    }
+
     setState(() {
       email = email;
     });
@@ -51,7 +61,7 @@ class _MyAppState extends State<MyApp> {
       duration: 5500,
       splash: 'asset/Animation/cab-animation.gif',
       backgroundColor: Colors.white,
-      nextScreen: email == "" ? Welcome() : Homepage(),
+      nextScreen: email == "" ? Welcome() : Dashboard(),
       splashIconSize: 350,
     );
   }
