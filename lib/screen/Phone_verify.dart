@@ -67,7 +67,8 @@ class _PrcState extends State<Prc> {
       PhoneAuthProvider.credential(
           verificationId: verificationId, smsCode: otp_code);
       print('Signed In');
-      auth.createUserWithEmailAndPassword(email: data[1], password: data[3]);
+      await auth.createUserWithEmailAndPassword(
+          email: data[1], password: data[3]);
       user = auth.currentUser;
       user!.sendEmailVerification();
       print('send Emaill up');
