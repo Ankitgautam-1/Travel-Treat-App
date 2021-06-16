@@ -1,5 +1,7 @@
 import 'package:app/screen/Const.dart';
+import 'package:app/screen/Dashboard.dart';
 import 'package:app/screen/Homepage.dart';
+import 'package:app/screen/SignUp.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -12,90 +14,41 @@ class SignIn extends StatefulWidget {
 }
 
 class _SignInState extends State<SignIn> {
+  TextEditingController _email = TextEditingController();
+  TextEditingController _pass = TextEditingController();
   final _formkey = GlobalKey<FormState>();
+  FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String _email = "", _pass = "";
-  bool _obscuretext = false;
-  // void registerwithemail() async {
-  //   if (_formkey.currentState!.validate()) {
-  //     _formkey.currentState!.save();
-  //     try {
-  //       UserCredential userCredential = await FirebaseAuth.instance
-  //           .createUserWithEmailAndPassword(email: _email, password: _pass);
-  //     } on FirebaseAuthException catch (e) {
-  //       if (e.code == 'weak-password') {
-  //         print('The password provided is too weak.');
-  //       } else if (e.code == 'email-already-in-use') {
-  //         print('The account already exists for that email.');
-  //       }
-  //     } catch (e) {
-  //       print(e);
-  //     }
-  //   } else {
-  //     print("Not valid");
-  //   }
-  // }
+  bool _obscure = true;
 
-  // Future<bool> loginwithemail() async {
-  //   if (_formkey.currentState!.validate()) {
-  //     _formkey.currentState!.save();
-  //     try {
-  //       UserCredential userCredential = await FirebaseAuth.instance
-  //           .signInWithEmailAndPassword(email: _email, password: _pass);
-  //       print("Done");
-  //       return true;
-  //     } on FirebaseAuthException catch (e) {
-  //       if (e.code == 'user-not-found') {
-  //         print('No user found for that email.');
-  //       } else if (e.code == 'wrong-password') {
-  //         print('Wrong password provided for that user.');
-  //       }
-  //       return false;
-  //     } catch (e) {
-  //       print(e);
-  //       return false;
-  //     }
-  //   } else {
-  //     print("Not valid");
-  //     return false;
-  //   }
-  // }
+  Future loginwithemail() async {
+    if (_formkey.currentState!.validate()) {
+      _formkey.currentState!.save();
+      try {
+        await _auth.signInWithEmailAndPassword(
+            email: _email.text, password: _pass.text);
 
-  void signin() async {
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-    } catch (e) {
-      print(e);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Dashboard(),
+          ),
+        );
+        User? user = _auth.currentUser;
+        print(user);
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found') {
+          print('No user found for that email.');
+        } else if (e.code == 'wrong-password') {
+          print('Wrong password provided for that user.');
+        }
+      } catch (e) {
+        print(e);
+      }
+    } else {
+      print("Not valid");
     }
   }
-
-  // Future signInWithGoogle() async {
-  //   // Trigger the authentication flow
-  //   final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-
-  //   // Obtain the auth details from the request
-  //   final GoogleSignInAuthentication googleAuth =
-  //       await googleUser!.authentication;
-
-  //   // Create a new credential
-  //   final credential = GoogleAuthProvider.credential(
-  //     accessToken: googleAuth.accessToken,
-  //     idToken: googleAuth.idToken,
-  //   );
-  //   print('Login');
-  //   // Once signed in, return the UserCredential
-  //   Navigator.pushReplacement(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (context) => Homepage(),
-  //     ),
-  //   );
-  //   await FirebaseAuth.instance.signInWithCredential(credential);
-  //   User? user = FirebaseAuth.instance.currentUser;
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
-  //   prefs.setString('email', user!.email!);
-  //   print('here :  $user');
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -103,18 +56,19 @@ class _SignInState extends State<SignIn> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
+          toolbarHeight: 40,
+          backgroundColor: Colors.white,
+          elevation: 0,
           leading: IconButton(
             icon: Icon(
-              Icons.arrow_back_ios,
-              color: Const.maincolor,
+              Icons.arrow_back,
+              color: Colors.black,
+              size: 25,
             ),
             onPressed: () {
               Navigator.pop(context);
             },
           ),
-          elevation: 0,
-          backgroundColor: Colors.white,
-          toolbarHeight: 40,
         ),
         body: SingleChildScrollView(
           child: Column(
@@ -141,62 +95,76 @@ class _SignInState extends State<SignIn> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      margin: EdgeInsets.only(top: 20),
-                      width: 350,
+                      width: 320,
                       child: TextFormField(
-                        onSaved: (val) => _email != val,
+                        controller: _email,
                         validator: (val) => val!.contains('@gmail.com')
                             ? null
-                            : 'Invalid Gmail Account',
+                            : "Enter valide email",
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'E-mail',
-                          hintText: 'Enter a email',
-                          prefixIcon: Icon(
-                            Icons.mail_outline,
-                            color: Const.maincolor,
+                          prefixIcon: Icon(Icons.email, color: Colors.black87),
+                          contentPadding: EdgeInsets.all(20),
+                          hintText: "Email",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(width: .6),
                           ),
-                          labelStyle:
-                              TextStyle(fontFamily: 'Ubuntu', fontSize: 18),
-                          hintStyle:
-                              TextStyle(fontFamily: 'Ubuntu', fontSize: 15),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(width: 1, color: Colors.black),
+                          ),
                         ),
                       ),
                     ),
+                    SizedBox(
+                      height: 20,
+                    ),
                     //input password
                     Container(
-                      margin: EdgeInsets.only(top: 20, bottom: 20),
-                      width: 350,
+                      width: 320,
                       child: TextFormField(
-                        onSaved: (val) => _pass != val,
-                        validator: (val) => val!.length < 6
-                            ? 'Password must cantains at least 6 charachter'
-                            : null,
-                        obscureText: _obscuretext,
+                        obscureText: _obscure,
+                        controller: _pass,
+                        validator: (val) => val!.length > 6
+                            ? null
+                            : "password should be at least 6 charcter",
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.send,
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Password',
-                          hintText: 'Enter your password',
-                          prefixIcon: Icon(
-                            Icons.lock,
-                            color: Const.maincolor,
-                          ),
-                          labelStyle:
-                              TextStyle(fontFamily: 'Ubuntu', fontSize: 18),
-                          hintStyle:
-                              TextStyle(fontFamily: 'Ubuntu', fontSize: 15),
-                          suffixIcon: GestureDetector(
-                            child: Icon(_obscuretext
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onTap: () {
+                          suffixIcon: IconButton(
+                            icon: FaIcon(
+                              _obscure
+                                  ? FontAwesomeIcons.eye
+                                  : FontAwesomeIcons.eyeSlash,
+                              color: Colors.black87,
+                            ),
+                            onPressed: () {
                               setState(() {
-                                _obscuretext = !_obscuretext;
+                                _obscure = !_obscure;
                               });
                             },
                           ),
+                          prefixIcon:
+                              Icon(Icons.password, color: Colors.black87),
+                          contentPadding: EdgeInsets.all(20),
+                          hintText: "Password",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(width: .6),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(width: 1, color: Colors.black),
+                          ),
                         ),
                       ),
+                    ),
+                    SizedBox(
+                      height: 20,
                     ),
                   ],
                 ),
@@ -210,11 +178,8 @@ class _SignInState extends State<SignIn> {
                     borderRadius: BorderRadius.circular(25.0),
                   ),
                 ),
-                onPressed: () {
-                  try {
-                    // loginwithemail();
-                    print('Done');
-                  } catch (e) {}
+                onPressed: () async {
+                  await loginwithemail();
                 },
                 child: Text(
                   ' Sign In ',
@@ -236,7 +201,14 @@ class _SignInState extends State<SignIn> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SignUp(),
+                        ),
+                      );
+                    },
                     child: Text(
                       ' Sign Up',
                       style: TextStyle(

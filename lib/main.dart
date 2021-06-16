@@ -4,6 +4,7 @@ import 'package:app/screen/Welcome.dart';
 import 'package:app/screen/Dashboard.dart';
 import 'package:app/screen/number_verify.dart';
 import 'package:app/screen/otp.dart';
+import 'package:app/screen/prc.dart';
 import 'package:app/screen/sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';

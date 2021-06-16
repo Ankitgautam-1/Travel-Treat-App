@@ -1,5 +1,6 @@
 import 'package:app/screen/Homepage.dart';
 import 'package:app/screen/Dashboard.dart';
+import 'package:app/screen/SignUp.dart';
 import 'package:app/screen/number_verify.dart';
 import 'package:app/screen/sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -155,7 +156,14 @@ class _WelcomeState extends State<Welcome> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SignUp(),
+                        ),
+                      );
+                    },
                     child: Text(
                       ' Sign Up',
                       style: TextStyle(
