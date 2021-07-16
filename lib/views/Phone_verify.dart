@@ -1,21 +1,40 @@
-import 'package:app/screen/Dashboard.dart';
-import 'package:app/screen/Email_verify.dart';
-import 'package:app/screen/otp.dart';
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:open_apps_settings/open_apps_settings.dart';
+import 'package:open_apps_settings/settings_enum.dart';
+import 'package:app/Data/accountProvider.dart';
+import 'package:app/Data/image.dart';
+import 'package:app/models/userAccount.dart';
+import 'package:app/views/Email_verify.dart';
+import 'package:app/views/LocationPermission.dart';
+import 'package:app/views/Maps.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:get/get.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:permission_handler/permission_handler.dart' as permissions;
+import 'package:location/location.dart' as loc;
 
 // ignore: must_be_immutable
 class Prc extends StatefulWidget {
-  List<String> data;
-  Prc({required this.data});
+  FirebaseApp app;
+  List<dynamic> data;
+  bool isgoogle;
+  Prc({required this.data, required this.isgoogle, required this.app});
   @override
-  _PrcState createState() => _PrcState(data: data);
+  _PrcState createState() =>
+      _PrcState(data: data, isgoogle: isgoogle, app: app);
 }
 
 class _PrcState extends State<Prc> {
-  List<String> data;
-  _PrcState({required this.data});
+  List<dynamic> data;
+  FirebaseApp app;
+  bool isgoogle;
+  _PrcState({required this.data, required this.isgoogle, required this.app});
   TextEditingController _1st = TextEditingController();
   TextEditingController _2nd = TextEditingController();
   TextEditingController _3rd = TextEditingController();
@@ -26,6 +45,8 @@ class _PrcState extends State<Prc> {
   String _otp = "";
   String verificationId = "";
   User? user;
+  String _ph = "";
+  loc.Location location = loc.Location();
   @override
   void initState() {
     sendotp();
@@ -33,53 +54,210 @@ class _PrcState extends State<Prc> {
   }
 
   Future sendotp() async {
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: "+91" + data[2],
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        auth.signInWithEmailAndPassword(email: data[1], password: data[3]);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Dashboard(), //! Handle it
-          ),
-        );
-      },
-      timeout: const Duration(seconds: 100),
-      verificationFailed: (FirebaseAuthException e) async {
-        if (e.code == 'invalid-phone-number') {
-          print('The provided phone number is not valid.');
-        }
-        print(e);
-      },
-      codeSent: (verificationId, resendingToken) async {
-        print("Otp is send ");
-        this.verificationId = verificationId;
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
-    print(data[2]);
+    _ph = "+91" + data[2];
+    if (isgoogle) {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+          phoneNumber: _ph,
+          // ignore: non_constant_identifier_names
+          verificationCompleted: (PhoneAuthCredential) async {},
+          verificationFailed: (FirebaseAuthException e) async {
+            if (e.code == 'invalid-phone-number') {
+              Get.snackbar(
+                  "Phone verification ", "Error occure while verification $e");
+            }
+            Get.snackbar(
+                "Phone verification ", "Error occure while verification $e");
+          },
+          timeout: Duration(seconds: 100),
+          codeSent: (verificationId, resendingToken) async {
+            print("Otp is send ");
+            Get.snackbar(
+              "",
+              "",
+              titleText: Text(
+                'OTP Verification',
+                style: TextStyle(
+                  fontSize: 15,
+                ),
+              ),
+              messageText: Text(
+                'A OTP Message is send to your Mobile number $_ph is verify it',
+                style: TextStyle(
+                  fontSize: 11,
+                ),
+              ),
+            );
+            this.verificationId = verificationId;
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {});
+    } else {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _ph,
+        verificationCompleted: (PhoneAuthCredential credential) async {},
+        timeout: const Duration(seconds: 100),
+        verificationFailed: (FirebaseAuthException e) async {
+          if (e.code == 'invalid-phone-number') {
+            Get.snackbar("Phone Verfication", "Invalid phone number");
+            print('The provided phone number is not valid.');
+          } else if (e.code == "FirebaseTooManyRequestsException") {
+            Get.snackbar("Phone Verfication", "SMS Services Error");
+          }
+          print(e);
+        },
+        codeSent: (verificationId, resendingToken) async {
+          print("Otp is send ");
+          Get.snackbar("", "",
+              titleText: Text(
+                'OTP Verification',
+                style: TextStyle(
+                  fontSize: 15,
+                ),
+              ),
+              messageText: Text(
+                'A OTP Message is send to your Mobile number $_ph is verify it',
+                style: TextStyle(
+                  fontSize: 11,
+                ),
+              ));
+          this.verificationId = verificationId;
+          print('$verificationId here it\'s');
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {},
+      );
+      print(data[2]);
+    }
   }
 
   // ignore: non_constant_identifier_names
   Future<void> verify(String otp_code) async {
-    try {
-      print(' ver :$verificationId');
-      PhoneAuthProvider.credential(
+    if (isgoogle) {
+      print(data);
+      var uid = auth.currentUser!.uid;
+      print(uid);
+      print(" Verfication :$verificationId");
+      PhoneAuthCredential phoneAuthCredential = PhoneAuthProvider.credential(
           verificationId: verificationId, smsCode: otp_code);
-      print('Signed In');
-      await auth.createUserWithEmailAndPassword(
-          email: data[1], password: data[3]);
-      user = auth.currentUser;
-      user!.sendEmailVerification();
-      print('send Emaill up');
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EmailVerify(data: data),
-        ),
+      try {
+        // auth.signInWithCredential(
+        //     phoneAuthCredential); //by commneting this line you can add same ph-number
+        try {
+          print("1st");
+          Dio newimage = Dio();
+          String savePath = Directory.systemTemp.path + '/' + uid + "_profile";
+          print("path =>$savePath");
+          await newimage.download(
+            data[3],
+            savePath,
+            options: Options(responseType: ResponseType.bytes),
+          );
+          print("2nd");
+          firebase_storage.Reference ref = firebase_storage
+              .FirebaseStorage.instance
+              .ref()
+              .child('Users_profile')
+              .child('/$uid/$uid');
+
+          print("Uploading image");
+          await ref.putFile(File(savePath));
+          print('Uploaded image');
+          Provider.of<ImageData>(context, listen: false)
+              .updateimage(File(savePath));
+          print("3rd");
+          final DatabaseReference db = FirebaseDatabase(app: app).reference();
+          print("The db :$db");
+          try {
+            await db.child('Users').child(uid).set(
+              {
+                "Username": "${data[0]}",
+                "Email": "${data[1]}",
+                "Phone": "${data[2]}",
+                "Image": "$savePath",
+              },
+            );
+            UserAccount userAccData = UserAccount(
+                Email: data[1],
+                Image: savePath,
+                Ph: data[2],
+                Uid: uid,
+                Username: data[0]);
+            Provider.of<AccountProvider>(context, listen: false)
+                .updateuseraccount(userAccData);
+
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+
+            prefs.setString("Username", data[0]);
+            prefs.setString("Email", data[1]);
+            prefs.setString("Ph", data[2]);
+            prefs.setString("Image", savePath);
+            prefs.setString("Uid", uid);
+            if (await permissions.Permission.locationWhenInUse.isGranted ||
+                await permissions.Permission.locationWhenInUse.isLimited ||
+                await permissions.Permission.location.isGranted ||
+                await permissions.Permission.location.isLimited) {
+              _checkGps();
+            } else {
+              Get.offAll(LocationPermissoin(app: app));
+            }
+          } catch (e) {
+            print('Error $e');
+          }
+        } catch (e) {
+          Get.snackbar(
+              "Account creation", "Error occured while creating account $e");
+        }
+      } catch (e) {
+        Get.snackbar(
+            "Phone Authentication", "Error occured while creating account $e");
+      }
+    } else {
+      try {
+        print(' ver :$verificationId');
+        PhoneAuthProvider.credential(
+            verificationId: verificationId, smsCode: otp_code);
+        print('Signed In');
+        try {
+          await auth.createUserWithEmailAndPassword(
+              email: data[1], password: data[3]);
+          user = auth.currentUser;
+          user!.sendEmailVerification();
+
+          Get.to(
+            EmailVerify(data: data, app: app),
+          );
+        } catch (e) {
+          Get.snackbar(
+            "Phone verification",
+            "Error occured $e",
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+      } catch (e) {
+        print("Error while Signin with phone ");
+      }
+    }
+  }
+
+  void _checkGps() async {
+    bool locationServices = await location.serviceEnabled();
+    print("val:$locationServices");
+    if (!locationServices) {
+      Future.delayed(
+        Duration(seconds: 3),
+        () async {
+          await OpenAppsSettings.openAppsSettings(
+            settingsCode: SettingsCode.LOCATION,
+            onCompletion: () async {
+              if (await location.serviceEnabled()) {
+                Get.offAll(Maps(app: app));
+              } else {
+                Get.offAll(LocationPermissoin(app: app));
+              }
+            },
+          );
+        },
       );
-    } catch (e) {
-      print("Error while Signin with phone ");
+    } else {
+      Get.offAll(Maps(app: app));
     }
   }
 
@@ -98,8 +276,11 @@ class _PrcState extends State<Prc> {
               color: Colors.black,
               size: 25,
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
+              try {
+                await auth.signOut();
+              } catch (e) {}
             },
           ),
         ),
@@ -351,14 +532,14 @@ class _PrcState extends State<Prc> {
                       borderRadius: BorderRadius.circular(20),
                     )),
                 onPressed: () async {
-                  otp = _1st.text +
+                  _otp = _1st.text +
                       _2nd.text +
                       _3rd.text +
                       _4th.text +
                       _5th.text +
                       _6th.text;
-                  print("Your otp is  $otp");
-                  await verify(otp);
+                  print("Your otp is  $_otp");
+                  await verify(_otp);
                 },
                 child: Text('Verify OTP'),
               ),

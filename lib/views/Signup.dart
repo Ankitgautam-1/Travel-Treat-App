@@ -1,21 +1,27 @@
 import 'dart:io';
-import 'package:app/screen/Const.dart';
-import 'package:app/screen/Dashboard.dart';
-import 'package:app/screen/Email_verify.dart';
-import 'package:app/screen/Phone_verify.dart';
-import 'package:app/screen/sign_in.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:images_picker/images_picker.dart';
+import 'package:get/get.dart';
+import 'package:app/Data/image.dart';
+import 'package:app/views/Phone_verify.dart';
+import 'package:app/views/Signin.dart';
+import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SignUp extends StatefulWidget {
-  const SignUp({Key? key}) : super(key: key);
+  FirebaseApp app;
+  SignUp({required this.app});
   @override
-  _SignUpState createState() => _SignUpState();
+  _SignUpState createState() => _SignUpState(app: app);
 }
 
 class _SignUpState extends State<SignUp> {
+  FirebaseApp app;
+  _SignUpState({required this.app});
   TextEditingController _username = TextEditingController();
   TextEditingController _email = TextEditingController();
   TextEditingController _ph = TextEditingController();
@@ -27,39 +33,164 @@ class _SignUpState extends State<SignUp> {
   FirebaseAuth _auth = FirebaseAuth.instance;
   bool image = false;
   bool isobscure = true;
-  final picker = ImagePicker();
+
+  final Permission _permissionforcamera = Permission.mediaLibrary;
+
   void _create() async {
     if (_formkey.currentState!.validate()) {
-      _data = [
-        _username.text,
-        _email.text,
-        _ph.text,
-        _pass.text,
-        _image.toString()
-      ];
+      if (image) {
+        Provider.of<ImageData>(context, listen: false).updateimage(_image);
+        print("Heree---------------------------------------------------");
+        print(_image.toString());
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Prc(data: _data),
-        ),
-      );
-      print(_data);
+        print("DONE================================================");
+        _data = [
+          _username.text,
+          _email.text,
+          _ph.text,
+          _pass.text,
+          _image.toString(),
+        ];
+        Get.to(
+          Prc(data: _data, isgoogle: false, app: app), //phone  verify
+        );
+        print(
+          _data,
+        );
+      } else {
+        Get.snackbar("Account Creation", "Image is not selected ",
+            snackPosition: SnackPosition.BOTTOM);
+      }
     }
   }
 
-  Future getImage() async {
-    final pickedFile = await picker.getImage(source: ImageSource.gallery);
+  void deleteprofile() {
+    setState(() {
+      image = false;
+      _image = Image.asset('asset/images/profile.jpg');
+    });
+  }
 
+  Future getImage() async {
+    bool _permissionStatus = await Permission.mediaLibrary.isGranted;
+    print("Accsess:-> $_permissionStatus");
+    if (_permissionStatus) {
+      List<Media>? pickedFile = await ImagesPicker.pick(
+        count: 1,
+        pickType: PickType.image,
+      );
+      setState(() {
+        if (pickedFile != null) {
+          File _im = File(pickedFile.elementAt(0).path);
+          _image = _im;
+          image = true;
+          print("image-->$_image");
+        } else {
+          print('No image selected.');
+        }
+      });
+    } else {
+      Get.snackbar("Media Access ", "Media Access nedded to select image");
+      PermissionStatus _access = await _permissionforcamera.request();
+      setState(() {
+        _permissionStatus = true;
+      });
+    }
+  }
+
+  Future getCamera() async {
+    final pickedFile = await ImagesPicker.openCamera(
+      pickType: PickType.image,
+      quality: 1,
+    );
     setState(() {
       if (pickedFile != null) {
-        File _im = File(pickedFile.path);
+        File _im = File(pickedFile.elementAt(0).path);
         _image = _im;
         image = true;
+        print(" image ${_image.toString().trim()}");
       } else {
         print('No image selected.');
       }
     });
+  }
+
+  Widget get() {
+    return Container(
+      color: Colors.white,
+      height: 200,
+      width: MediaQuery.of(context).size.width,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            "Choos your profile picture",
+            style: TextStyle(fontSize: 18),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.fromLTRB(10, 15, 10, 15),
+                  primary: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+                onPressed: getImage,
+                child: Icon(
+                  Icons.image,
+                  color: Colors.white,
+                  size: 25,
+                ),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.05,
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.fromLTRB(10, 15, 10, 15),
+                  primary: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+                onPressed: getCamera,
+                child: Icon(
+                  Icons.camera,
+                  color: Colors.white,
+                  size: 25,
+                ),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.05,
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.fromLTRB(10, 15, 10, 15),
+                  primary: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+                onPressed: deleteprofile,
+                child: Icon(
+                  Icons.delete,
+                  color: Colors.white,
+                  size: 25,
+                ),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.05,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -78,7 +209,7 @@ class _SignUpState extends State<SignUp> {
               size: 25,
             ),
             onPressed: () {
-              Navigator.pop(context);
+              Get.back();
             },
           ),
         ),
@@ -109,7 +240,7 @@ class _SignUpState extends State<SignUp> {
                               ? CircleAvatar(
                                   backgroundImage:
                                       AssetImage('asset/images/profile.jpg'),
-                                )
+                                  backgroundColor: Colors.grey[200])
                               : CircleAvatar(
                                   child: ClipOval(
                                     child: SizedBox(
@@ -136,7 +267,9 @@ class _SignUpState extends State<SignUp> {
                                     borderRadius: BorderRadius.circular(50),
                                   ),
                                 ),
-                                onPressed: getImage,
+                                onPressed: () {
+                                  Get.bottomSheet(get());
+                                },
                                 child: Icon(
                                   Icons.camera_alt,
                                   color: Colors.white,
@@ -161,7 +294,7 @@ class _SignUpState extends State<SignUp> {
                         width: 320,
                         child: TextFormField(
                           controller: _username,
-                          validator: (val) => val!.length > 6
+                          validator: (val) => val!.length > 5
                               ? null
                               : "Username should be at least 6 charcter",
                           keyboardType: TextInputType.text,
@@ -225,7 +358,7 @@ class _SignUpState extends State<SignUp> {
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.send_to_mobile,
+                            prefixIcon: Icon(Icons.phone_android_rounded,
                                 color: Colors.black87),
                             contentPadding: EdgeInsets.all(20),
                             hintText: "Phone number",
@@ -321,18 +454,13 @@ class _SignUpState extends State<SignUp> {
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SignIn(),
-                                ),
-                              );
+                              Get.off(SignIn(app: app));
                             },
                             child: Text(
                               ' Sign In',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Const.maincolor,
+                                color: Colors.black,
                               ),
                             ),
                           ),
