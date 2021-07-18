@@ -24,19 +24,18 @@ class Geocoding {
         String jsonData = response.body;
         var decodeData = jsonDecode(jsonData);
         var address = decodeData["results"][0]["formatted"];
-        Map<String, dynamic> latlng = decodeData["results"][0]["geometry"];
-        print(" LatLng :$latlng");
+        var lat = decodeData["results"][0]["geometry"]["lat"];
+        var lng = decodeData["results"][0]["geometry"]["lng"];
+        print(" LatLng :$lat and $lng ");
 
         print('Your address is ->$address');
 
-        UserAddress userAddress = new UserAddress(
-            placeAddres: address,
-            lat: position.latitude,
-            lng: position.longitude);
+        UserAddress userAddress =
+            new UserAddress(placeAddres: address, lat: lat, lng: lng);
 
         Provider.of<UserData>(context, listen: false)
             .updatepickuplocation(userAddress);
-        return address;
+        return userAddress;
       } else if (response.statusCode == 400) {
         print(
             "Invalid request (bad request; a required parameter is missing; invalid coordinates; invalid version; invalid format)");

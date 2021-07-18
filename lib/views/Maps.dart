@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:app/Data/pickuploc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -90,11 +91,34 @@ class _MapsState extends State<Maps> {
       desiredAccuracy: LocationAccuracy.high,
     );
 
-    var res = await Geocoding().getAddress(position, context);
-    if (res != "Failed") {}
-    setState(() {
-      loadingplace = false;
-    });
+    dynamic res = await Geocoding().getAddress(position, context);
+    if (res != "Failed") {
+      if (Provider.of<PickupMarkers>(context, listen: false).places != null) {
+        Provider.of<PickupMarkers>(context, listen: false)
+            .updatePickupMarkers(null, null);
+      }
+      LatLng curloc = LatLng(res.lat, res.lng);
+      setState(() {
+        loadingplace = false;
+        placeMarker = [];
+        placeMarker.add(Marker(
+            markerId: MarkerId(curloc.toString()),
+            infoWindow: InfoWindow(title: res.placeAddres),
+            position: curloc));
+        CameraPosition cameraPosition =
+            CameraPosition(target: curloc, zoom: 19);
+        newmapcontroller.animateCamera(
+          CameraUpdate.newCameraPosition(cameraPosition),
+        );
+      });
+    } else {
+      Get.snackbar("Location service", "Couldn't get the current location",
+          duration: Duration(seconds: 4));
+      setState(() {
+        loadingplace = false;
+      });
+    }
+
     print(" This is -$res");
   }
 
@@ -261,30 +285,166 @@ class _MapsState extends State<Maps> {
                                           SearchPlace(
                                             app: app,
                                             onPlaceSelect: () {
-                                              LatLng place = Provider.of<
-                                                          DestinationMarkers>(
-                                                      context,
-                                                      listen: false)
-                                                  .places;
+                                              if (Provider.of<DestinationMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places !=
+                                                      null &&
+                                                  Provider.of<PickupMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places !=
+                                                      null) {
+                                                print("CASE -1 HERE");
+                                                LatLng pickup =
+                                                    Provider.of<PickupMarkers>(
+                                                            context,
+                                                            listen: false)
+                                                        .places;
+                                                String pickupaddress =
+                                                    Provider.of<PickupMarkers>(
+                                                            context,
+                                                            listen: false)
+                                                        .address;
 
-                                              if (place.toString().isNotEmpty) {
+                                                LatLng destination = Provider
+                                                        .of<DestinationMarkers>(
+                                                            context,
+                                                            listen: false)
+                                                    .places;
+                                                String destinationaddress =
+                                                    Provider.of<PickupMarkers>(
+                                                            context,
+                                                            listen: false)
+                                                        .address;
                                                 setState(() {
                                                   placeMarker = [];
                                                   placeMarker.add(Marker(
                                                       markerId: MarkerId(
-                                                        place.toString(),
-                                                      ),
-                                                      position: place));
+                                                          pickup.toString()),
+                                                      infoWindow: InfoWindow(
+                                                          title: pickupaddress),
+                                                      position: pickup));
+                                                  placeMarker.add(Marker(
+                                                      markerId: MarkerId(
+                                                          destination
+                                                              .toString()),
+                                                      infoWindow: InfoWindow(
+                                                          title:
+                                                              destinationaddress),
+                                                      position: destination));
                                                 });
-                                                CameraPosition cameraPosition =
-                                                    CameraPosition(
-                                                        target: place,
-                                                        zoom: 18);
-                                                newmapcontroller.animateCamera(
-                                                  CameraUpdate
-                                                      .newCameraPosition(
-                                                          cameraPosition),
-                                                );
+                                              } else if (Provider.of<
+                                                                  DestinationMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places ==
+                                                      null &&
+                                                  Provider.of<PickupMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places !=
+                                                      null) {
+                                                printInfo(info: "CASE -2");
+                                                LatLng pickup =
+                                                    Provider.of<PickupMarkers>(
+                                                            context,
+                                                            listen: false)
+                                                        .places;
+
+                                                if (pickup
+                                                    .toString()
+                                                    .isNotEmpty) {
+                                                  setState(() {
+                                                    placeMarker = [];
+                                                    String pickupaddres = Provider
+                                                            .of<PickupMarkers>(
+                                                                context,
+                                                                listen: false)
+                                                        .address;
+                                                    placeMarker.add(Marker(
+                                                        markerId: MarkerId(
+                                                            pickup.toString()),
+                                                        infoWindow: InfoWindow(
+                                                            title: pickupaddres
+                                                                .toString()),
+                                                        position: pickup));
+                                                  });
+                                                  CameraPosition
+                                                      cameraPosition =
+                                                      CameraPosition(
+                                                          target: pickup,
+                                                          zoom: 18);
+                                                  newmapcontroller
+                                                      .animateCamera(
+                                                    CameraUpdate
+                                                        .newCameraPosition(
+                                                            cameraPosition),
+                                                  );
+                                                }
+                                              } else if (Provider.of<
+                                                                  PickupMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places ==
+                                                      null &&
+                                                  Provider.of<DestinationMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places !=
+                                                      null) {
+                                                printInfo(info: "CASE -3");
+                                                LatLng destination = Provider
+                                                        .of<DestinationMarkers>(
+                                                            context,
+                                                            listen: false)
+                                                    .places;
+
+                                                if (destination
+                                                    .toString()
+                                                    .isNotEmpty) {
+                                                  setState(() {
+                                                    placeMarker = [];
+                                                    String destinationaddres =
+                                                        Provider.of<PickupMarkers>(
+                                                                context,
+                                                                listen: false)
+                                                            .address;
+                                                    placeMarker.add(Marker(
+                                                        markerId: MarkerId(
+                                                            destination
+                                                                .toString()),
+                                                        infoWindow: InfoWindow(
+                                                            title:
+                                                                destinationaddres),
+                                                        position: destination));
+                                                  });
+                                                  CameraPosition
+                                                      cameraPosition =
+                                                      CameraPosition(
+                                                          target: destination,
+                                                          zoom: 18);
+                                                  newmapcontroller
+                                                      .animateCamera(
+                                                    CameraUpdate
+                                                        .newCameraPosition(
+                                                            cameraPosition),
+                                                  );
+                                                }
+                                              } else if (Provider.of<
+                                                                  PickupMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places ==
+                                                      null &&
+                                                  Provider.of<DestinationMarkers>(
+                                                              context,
+                                                              listen: false)
+                                                          .places ==
+                                                      null) {
+                                                print("NO PLACE IS SELECTED ");
+                                              } else {
+                                                print("still");
                                               }
                                             },
                                           ),
@@ -347,14 +507,13 @@ class _MapsState extends State<Maps> {
                                                       : Text(
                                                           Provider.of<UserData>(
                                                                           context)
-                                                                      .pickuplocation
-                                                                      .placeAddres ==
-                                                                  ""
+                                                                      .pickuplocation ==
+                                                                  null
                                                               ? "Current Location"
                                                               : Provider.of<
                                                                           UserData>(
                                                                       context)
-                                                                  .pickuplocation
+                                                                  .pickuplocation!
                                                                   .placeAddres,
                                                           softWrap: true,
                                                         ),

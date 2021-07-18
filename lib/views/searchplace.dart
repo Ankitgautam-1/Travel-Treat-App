@@ -1,3 +1,4 @@
+import 'package:app/Data/pickuploc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -32,9 +33,13 @@ class _SearchPlaceState extends State<SearchPlace> {
   TextEditingController _pickuploc = TextEditingController();
   List placesList = [];
   bool loading = false;
-  void searchplace(String placeString) async {
+  bool loadingforpickup = false;
+  bool destination = false;
+  bool loadingfordestination = false;
+  bool pickup = false;
+  void pickupsearch(String placeString) async {
     setState(() {
-      loading = true;
+      loadingforpickup = true;
     });
     if (placeString.length != 0) {
       var places = Httpreq(
@@ -45,8 +50,30 @@ class _SearchPlaceState extends State<SearchPlace> {
         print("List Of Places:>$placesList");
         if (placesList.length > 0) {
           setState(() {
-            hasData = true;
-            loading = false;
+            pickup = true;
+            loadingforpickup = false;
+          });
+        }
+      }
+      print(res);
+    }
+  }
+
+  void destinationsearch(String placeString) async {
+    setState(() {
+      loadingfordestination = true;
+    });
+    if (placeString.length != 0) {
+      var places = Httpreq(
+          place: placeString, endpoint: "FindPlaceByText", query: "text");
+      var res = await places.getPlace();
+      if (res != "Failed") {
+        placesList = res['results'];
+        print("List Of Places:>$placesList");
+        if (placesList.length > 0) {
+          setState(() {
+            destination = true;
+            loadingfordestination = false;
           });
         }
       }
@@ -79,17 +106,22 @@ class _SearchPlaceState extends State<SearchPlace> {
                     Container(
                       width: MediaQuery.of(context).size.width * 0.75,
                       child: TextFormField(
-                        initialValue:
-                            Provider.of<UserData>(context, listen: false)
-                                    .pickuplocation
-                                    .placeAddres
-                                    .isNotEmpty
-                                ? Provider.of<UserData>(context, listen: false)
-                                    .pickuplocation
-                                    .placeAddres
+                        initialValue: Provider.of<UserData>(context,
+                                        listen: false)
+                                    .pickuplocation !=
+                                null
+                            ? Provider.of<UserData>(context)
+                                .pickuplocation!
+                                .placeAddres
+                            : Provider.of<PickupMarkers>(context, listen: false)
+                                        .places !=
+                                    null
+                                ? Provider.of<PickupMarkers>(context,
+                                        listen: false)
+                                    .address
                                 : "",
                         keyboardType: TextInputType.streetAddress,
-                        onFieldSubmitted: (val) => searchplace(val),
+                        onFieldSubmitted: (val) => pickupsearch(val),
                         decoration: InputDecoration(
                           hintText: "Pick Up?",
                           contentPadding: EdgeInsets.symmetric(horizontal: 8),
@@ -118,8 +150,13 @@ class _SearchPlaceState extends State<SearchPlace> {
                     Container(
                       width: MediaQuery.of(context).size.width * 0.75,
                       child: TextFormField(
-                        onFieldSubmitted: (val) => searchplace(val),
+                        onFieldSubmitted: (val) => destinationsearch(val),
                         keyboardType: TextInputType.streetAddress,
+                        initialValue: Provider.of<DestinationMarkers>(context)
+                                    .places !=
+                                null
+                            ? Provider.of<DestinationMarkers>(context).address
+                            : "",
                         decoration: InputDecoration(
                           hintText: "Where to?",
                           contentPadding: EdgeInsets.symmetric(horizontal: 8),
@@ -137,7 +174,7 @@ class _SearchPlaceState extends State<SearchPlace> {
                 SizedBox(
                   height: 28,
                 ),
-                hasData
+                pickup
                     ? SingleChildScrollView(
                         child: Container(
                           height: 300,
@@ -147,6 +184,9 @@ class _SearchPlaceState extends State<SearchPlace> {
                                 return ListTile(
                                   leading: GestureDetector(
                                       onTap: () {
+                                        Provider.of<UserData>(context,
+                                                listen: false)
+                                            .updatepickuplocation(null);
                                         print(
                                           'lat ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
                                         );
@@ -155,9 +195,12 @@ class _SearchPlaceState extends State<SearchPlace> {
                                                 ["lat"],
                                             placesList[index]["location"]
                                                 ["lng"]);
-                                        Provider.of<DestinationMarkers>(context,
+                                        String address =
+                                            placesList[index]["address"];
+                                        Provider.of<PickupMarkers>(context,
                                                 listen: false)
-                                            .updateDestinationMarkers(place);
+                                            .updatePickupMarkers(
+                                                place, address);
                                         print("place info:->$place");
                                         Get.back();
                                         onPlaceSelect();
@@ -169,9 +212,50 @@ class _SearchPlaceState extends State<SearchPlace> {
                               }),
                         ),
                       )
-                    : loading
+                    : destination
+                        ? Container()
+                        : loadingforpickup
+                            ? CircularProgressIndicator()
+                            : Container(
+                                child: Text('No Places to be found'),
+                              ),
+                destination
+                    ? SingleChildScrollView(
+                        child: Container(
+                          height: 300,
+                          child: ListView.builder(
+                            itemCount: placesList.length,
+                            itemBuilder: (context, index) {
+                              return ListTile(
+                                leading: GestureDetector(
+                                    onTap: () {
+                                      print(
+                                        'lat ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
+                                      );
+                                      LatLng place = LatLng(
+                                          placesList[index]["location"]["lat"],
+                                          placesList[index]["location"]["lng"]);
+
+                                      String address =
+                                          placesList[index]["address"];
+                                      Provider.of<DestinationMarkers>(context,
+                                              listen: false)
+                                          .updateDestinationMarkers(
+                                              place, address);
+                                      print("place info:->$place");
+                                      Get.back();
+                                      onPlaceSelect();
+                                    },
+                                    child: Icon(Icons.location_on_rounded)),
+                                title: Text('${placesList[index]["address"]}'),
+                              );
+                            },
+                          ),
+                        ),
+                      )
+                    : loadingfordestination
                         ? CircularProgressIndicator()
-                        : Container(child: Text('No Places to be found')),
+                        : Container(),
               ],
             ),
           ),

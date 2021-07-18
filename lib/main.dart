@@ -91,19 +91,8 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     checkuid();
-    function();
-    super.initState();
-  }
 
-  void function() async {
-    try {
-      final DatabaseReference db = FirebaseDatabase(app: app).reference();
-      dynamic a =
-          await db.child('Users').child("ixcH4AREcRMk5hvTcilM9tTd4jB2").get();
-      print("here :$a");
-    } catch (e) {
-      print("error:$e");
-    }
+    super.initState();
   }
 
   void checkuid() async {

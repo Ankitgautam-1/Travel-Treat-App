@@ -244,26 +244,6 @@ class _WelcomeState extends State<Welcome> {
                   : SizedBox(
                       height: 25,
                     ),
-
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 80),
-                  primary: Colors.black87,
-                  onPrimary: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25.0),
-                  ),
-                ),
-                onPressed: () {
-                  Get.to(SignUp(app: app));
-                },
-                child: Text(
-                  ' Sign Up ',
-                  style: TextStyle(
-                    fontSize: 16,
-                  ),
-                ),
-              ),
               Center(
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
@@ -287,29 +267,29 @@ class _WelcomeState extends State<Welcome> {
               SizedBox(
                 height: 10,
               ),
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.center,
-              //   children: [
-              //     Text(
-              //       'Don\'t have an Account ?',
-              //       style: TextStyle(
-              //         fontSize: 16,
-              //       ),
-              //     ),
-              //     TextButton(
-              //       onPressed: () {
-              //         Get.to(SignUp(app: app));
-              //       },
-              //       child: Text(
-              //         ' Sign Up',
-              //         style: TextStyle(
-              //           fontSize: 16,
-              //           color: Colors.blue,
-              //         ),
-              //       ),
-              //     ),
-              //   ],
-              // ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Don\'t have an Account ?',
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Get.to(SignUp(app: app));
+                    },
+                    child: Text(
+                      ' Sign Up',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
