@@ -8,9 +8,8 @@ import 'package:app/views/Maps.dart';
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
-// ignore: must_be_immutable
 class LocationPermissoin extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   LocationPermissoin({required this.app});
 
   @override

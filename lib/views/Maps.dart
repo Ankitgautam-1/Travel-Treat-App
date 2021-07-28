@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
+import 'package:app/Data/DirectionProvider.dart';
 import 'package:app/Data/pickuploc.dart';
+import 'package:app/services/getDirections.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +17,7 @@ import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/Data/userData.dart';
 import 'package:app/models/userAccount.dart';
-import 'package:app/models/userAddress.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:app/services/assistantmethod.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:app/views/searchplace.dart';
@@ -22,13 +25,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 
-// ignore: must_be_immutable
-//
-//
-
-// ignore: must_be_immutable
 class Maps extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   Maps({required this.app});
   @override
   _MapsState createState() => _MapsState(app: app);
@@ -47,12 +45,23 @@ class _MapsState extends State<Maps> {
   late GoogleMapController newmapcontroller;
   Completer<GoogleMapController> mapcontroller = Completer();
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
+
   late Position currentPosition;
+  List<LatLng> polylineCoordinates = [];
+  // ignore: avoid_init_to_null
+  Map<PolylineId, Polyline> polyline = {};
+  PolylinePoints polylinePoints = PolylinePoints();
+  // ignore: cancel_subscriptions
   StreamSubscription<Position>? positionStream;
   bool loadingplace = false;
   var geoLocator = Geolocator();
+  // ignore: avoid_init_to_null
+  List<LatLng>? poly = null;
+  Set<Polyline> _polylines = {};
 
+  // Iterable<Polyline> pol=
   void track() async {
+    Timeline.startSync("track");
     positionStream =
         Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.high)
             .listen(
@@ -69,6 +78,7 @@ class _MapsState extends State<Maps> {
                 position.longitude.toString());
       },
     );
+    Timeline.finishSync();
   }
 
   void locatePosition() async {
@@ -129,7 +139,6 @@ class _MapsState extends State<Maps> {
     await prefs.remove('Ph');
     await prefs.remove('Uid');
     await prefs.remove('Image');
-
     try {
       await GoogleSignIn().signOut();
     } catch (e) {}
@@ -141,8 +150,11 @@ class _MapsState extends State<Maps> {
         UserAccount(Email: "", Image: "", Ph: "", Uid: "", Username: "");
     Provider.of<AccountProvider>(context, listen: false)
         .updateuseraccount(userAccount);
-    Provider.of<UserData>(context, listen: false)
-        .updatepickuplocation(UserAddress(placeAddres: "", lat: 0, lng: 0));
+    Provider.of<UserData>(context, listen: false).updatepickuplocation(null);
+    Provider.of<PickupMarkers>(context, listen: false)
+        .updatePickupMarkers(null, null);
+    Provider.of<DestinationMarkers>(context, listen: false)
+        .updateDestinationMarkers(null, null);
     Get.off(
       Welcome(app: app),
     );
@@ -171,6 +183,7 @@ class _MapsState extends State<Maps> {
 
   @override
   Widget build(BuildContext context) {
+    print('rebuilding the widget');
     return SafeArea(
       child: Scaffold(
         key: _scaffoldKey,
@@ -194,7 +207,9 @@ class _MapsState extends State<Maps> {
                       mapToolbarEnabled: true,
                       compassEnabled: false,
                       markers: Set.from(placeMarker),
-                      trafficEnabled: true,
+                      trafficEnabled: false,
+                      buildingsEnabled: false,
+                      polylines: _polylines,
                       onMapCreated: (GoogleMapController controller) {
                         mapcontroller.complete(controller);
                         newmapcontroller = controller;
@@ -254,16 +269,8 @@ class _MapsState extends State<Maps> {
                                   Center(
                                     child: Icon(Icons.keyboard_arrow_up_sharp),
                                   ),
-                                  Text(
-                                    "Hi there,",
-                                    style: TextStyle(fontSize: 12.0),
-                                  ),
-                                  Text(
-                                    "Where to",
-                                    style: TextStyle(fontSize: 20.0),
-                                  ),
                                   SizedBox(
-                                    height: 20.0,
+                                    height: 15,
                                   ),
                                   Container(
                                     height: 35.0,
@@ -284,28 +291,67 @@ class _MapsState extends State<Maps> {
                                         Get.to(
                                           SearchPlace(
                                             app: app,
-                                            onPlaceSelect: () {
+                                            onPlaceSelect: () async {
+                                              setState(() {
+                                                Provider.of<DirectionsProvider>(
+                                                        context,
+                                                        listen: false)
+                                                    .updateDirectionsProvider(
+                                                        null, null);
+                                                _polylines = {};
+                                              });
                                               if (Provider.of<DestinationMarkers>(
-                                                              context,
+                                                                  context,
+                                                                  listen: false)
+                                                              .places !=
+                                                          null &&
+                                                      Provider.of<PickupMarkers>(
+                                                                  context,
+                                                                  listen: false)
+                                                              .places !=
+                                                          null ||
+                                                  Provider.of<UserData>(context,
                                                               listen: false)
-                                                          .places !=
-                                                      null &&
-                                                  Provider.of<PickupMarkers>(
-                                                              context,
-                                                              listen: false)
-                                                          .places !=
+                                                          .pickuplocation !=
                                                       null) {
                                                 print("CASE -1 HERE");
-                                                LatLng pickup =
-                                                    Provider.of<PickupMarkers>(
+                                                LatLng pickup = Provider.of<
+                                                                    PickupMarkers>(
+                                                                context,
+                                                                listen: false)
+                                                            .places !=
+                                                        null
+                                                    ? Provider.of<PickupMarkers>(
                                                             context,
                                                             listen: false)
-                                                        .places;
+                                                        .places
+                                                    : LatLng(
+                                                        Provider.of<UserData>(context,
+                                                                listen: false)
+                                                            .pickuplocation!
+                                                            .lat,
+                                                        Provider.of<UserData>(
+                                                                context,
+                                                                listen: false)
+                                                            .pickuplocation!
+                                                            .lng);
                                                 String pickupaddress =
                                                     Provider.of<PickupMarkers>(
-                                                            context,
-                                                            listen: false)
-                                                        .address;
+                                                                    context,
+                                                                    listen:
+                                                                        false)
+                                                                .places !=
+                                                            null
+                                                        ? Provider.of<
+                                                                    PickupMarkers>(
+                                                                context,
+                                                                listen: false)
+                                                            .address
+                                                        : Provider.of<UserData>(
+                                                                context,
+                                                                listen: false)
+                                                            .pickuplocation!
+                                                            .placeAddres;
 
                                                 LatLng destination = Provider
                                                         .of<DestinationMarkers>(
@@ -313,7 +359,7 @@ class _MapsState extends State<Maps> {
                                                             listen: false)
                                                     .places;
                                                 String destinationaddress =
-                                                    Provider.of<PickupMarkers>(
+                                                    Provider.of<DestinationMarkers>(
                                                             context,
                                                             listen: false)
                                                         .address;
@@ -333,6 +379,55 @@ class _MapsState extends State<Maps> {
                                                           title:
                                                               destinationaddress),
                                                       position: destination));
+                                                });
+                                                Directions directions = Directions(
+                                                    endpoint: "FindDrivingPath",
+                                                    origin:
+                                                        "${pickup.latitude},${pickup.longitude}",
+                                                    destination:
+                                                        "${destination.latitude},${destination.longitude}",
+                                                    context: context);
+                                                try {
+                                                  poly = await directions
+                                                      .getDirections();
+                                                  print("poly:$poly");
+                                                  if (await directions
+                                                          .getDirections() ==
+                                                      null) {}
+                                                  print(
+                                                      "the value is poly:$poly ");
+                                                } catch (e) {
+                                                  print("errors $e");
+                                                }
+                                                setState(() {
+                                                  _polylines = {
+                                                    Polyline(
+                                                        width: 3,
+                                                        polylineId:
+                                                            PolylineId("1"),
+                                                        color: Colors.black,
+                                                        points: Provider.of<
+                                                                    DirectionsProvider>(
+                                                                context,
+                                                                listen: false)
+                                                            .cordinates_collections!)
+                                                  };
+
+                                                  // CameraPosition
+                                                  CameraPosition
+                                                      cameraPosition =
+                                                      CameraPosition(
+                                                          target: pickup,
+                                                          zoom: 18);
+                                                  newmapcontroller
+                                                      .animateCamera(
+                                                    CameraUpdate.newLatLngBounds(
+                                                        Provider.of<DirectionsProvider>(
+                                                                context,
+                                                                listen: false)
+                                                            .bounds!,
+                                                        65.0),
+                                                  );
                                                 });
                                               } else if (Provider.of<
                                                                   DestinationMarkers>(
@@ -406,7 +501,7 @@ class _MapsState extends State<Maps> {
                                                   setState(() {
                                                     placeMarker = [];
                                                     String destinationaddres =
-                                                        Provider.of<PickupMarkers>(
+                                                        Provider.of<DestinationMarkers>(
                                                                 context,
                                                                 listen: false)
                                                             .address;
@@ -506,13 +601,17 @@ class _MapsState extends State<Maps> {
                                                         )
                                                       : Text(
                                                           Provider.of<UserData>(
-                                                                          context)
+                                                                          context,
+                                                                          listen:
+                                                                              false)
                                                                       .pickuplocation ==
                                                                   null
                                                               ? "Current Location"
                                                               : Provider.of<
                                                                           UserData>(
-                                                                      context)
+                                                                      context,
+                                                                      listen:
+                                                                          false)
                                                                   .pickuplocation!
                                                                   .placeAddres,
                                                           softWrap: true,
@@ -546,6 +645,47 @@ class _MapsState extends State<Maps> {
                                   ),
                                   SizedBox(
                                     height: 10.0,
+                                  ),
+                                  Divider(
+                                    height: 1.0,
+                                    color: Colors.black87,
+                                    thickness: 1.0,
+                                  ),
+                                  SizedBox(
+                                    height: 10.0,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.work,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(
+                                        width: 12.0,
+                                      ),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Add Home'),
+                                          SizedBox(
+                                            height: 4.0,
+                                          ),
+                                          Text(
+                                            "Your Home address",
+                                            style: TextStyle(
+                                              color: Colors.grey[800],
+                                              fontSize: 12.0,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                  SizedBox(
+                                    height: 10,
                                   ),
                                   Divider(
                                     height: 1.0,
@@ -640,14 +780,18 @@ class _MapsState extends State<Maps> {
             height: 35,
           ),
           Text(
-            Provider.of<AccountProvider>(context).userAccount.Username,
+            Provider.of<AccountProvider>(context, listen: false)
+                .userAccount
+                .Username,
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           SizedBox(
             height: 20,
           ),
           Text(
-            Provider.of<AccountProvider>(context).userAccount.Email,
+            Provider.of<AccountProvider>(context, listen: false)
+                .userAccount
+                .Email,
             style: TextStyle(fontSize: 13),
           ),
           SizedBox(

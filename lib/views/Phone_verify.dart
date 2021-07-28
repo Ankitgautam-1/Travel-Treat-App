@@ -19,11 +19,10 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
-// ignore: must_be_immutable
 class Prc extends StatefulWidget {
-  FirebaseApp app;
-  List<dynamic> data;
-  bool isgoogle;
+  final FirebaseApp app;
+  final List<dynamic> data;
+  final bool isgoogle;
   Prc({required this.data, required this.isgoogle, required this.app});
   @override
   _PrcState createState() =>
@@ -135,6 +134,7 @@ class _PrcState extends State<Prc> {
       var uid = auth.currentUser!.uid;
       print(uid);
       print(" Verfication :$verificationId");
+      // ignore: unused_local_variable
       PhoneAuthCredential phoneAuthCredential = PhoneAuthProvider.credential(
           verificationId: verificationId, smsCode: otp_code);
       try {
@@ -143,7 +143,8 @@ class _PrcState extends State<Prc> {
         try {
           print("1st");
           Dio newimage = Dio();
-          String savePath = Directory.systemTemp.path + '/' + uid + "_profile";
+          String savePath =
+              Directory.systemTemp.path + '/' + uid + "_profile_google";
           print("path =>$savePath");
           await newimage.download(
             data[3],

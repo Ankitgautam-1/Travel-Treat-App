@@ -19,13 +19,10 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
-// ignore: must_be_immutable
 class EmailVerify extends StatefulWidget {
-  FirebaseApp app;
-
-  List<dynamic> data;
+  final FirebaseApp app;
+  final List<dynamic> data;
   EmailVerify({required this.data, required this.app});
-
   @override
   _EmailVerifyState createState() => _EmailVerifyState(data: data, app: app);
 }

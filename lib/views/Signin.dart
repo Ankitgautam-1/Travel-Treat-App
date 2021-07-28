@@ -21,9 +21,8 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
-// ignore: must_be_immutable
 class SignIn extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   SignIn({required this.app});
   @override
   _SignInState createState() => _SignInState(app: app);
@@ -76,9 +75,9 @@ class _SignInState extends State<SignIn> {
 
           Provider.of<AccountProvider>(context, listen: false)
               .updateuseraccount(userAccount);
-          bool cache_image = await File(image!).exists();
-          print("cache_image:$cache_image");
-          if (cache_image) {
+          bool cacheimage = await File(image!).exists();
+          print("cache_image:$cacheimage");
+          if (cacheimage) {
             Get.snackbar(
                 "Account details", "Getting account details please await",
                 snackPosition: SnackPosition.BOTTOM);
@@ -195,7 +194,7 @@ class _SignInState extends State<SignIn> {
               ),
               SizedBox(height: 30),
               Image.asset(
-                'asset/images/Welcome.jpg',
+                'asset/images/sign_in.jpg',
                 width: 360,
               ),
               SizedBox(

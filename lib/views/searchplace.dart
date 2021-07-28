@@ -5,13 +5,11 @@ import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/userData.dart';
-import 'package:app/models/userAddress.dart';
 import 'package:app/services/httpreq.dart';
-import 'package:app/views/Maps.dart';
 import 'package:provider/provider.dart';
 
 class SearchPlace extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   final VoidCallback onPlaceSelect;
   SearchPlace({required this.app, required this.onPlaceSelect});
 
@@ -24,13 +22,7 @@ class _SearchPlaceState extends State<SearchPlace> {
   FirebaseApp app;
   final VoidCallback onPlaceSelect;
   _SearchPlaceState({required this.app, required this.onPlaceSelect});
-  final CameraPosition _initpostion = CameraPosition(
-    target: LatLng(19.217107, 73.08338),
-    zoom: 17.1414,
-  );
   bool hasData = false;
-  TextEditingController _searchloc = TextEditingController();
-  TextEditingController _pickuploc = TextEditingController();
   List placesList = [];
   bool loading = false;
   bool loadingforpickup = false;
@@ -40,6 +32,8 @@ class _SearchPlaceState extends State<SearchPlace> {
   void pickupsearch(String placeString) async {
     setState(() {
       loadingforpickup = true;
+      pickup = false;
+      destination = false;
     });
     if (placeString.length != 0) {
       var places = Httpreq(
@@ -61,6 +55,8 @@ class _SearchPlaceState extends State<SearchPlace> {
 
   void destinationsearch(String placeString) async {
     setState(() {
+      pickup = false;
+      destination = false;
       loadingfordestination = true;
     });
     if (placeString.length != 0) {
@@ -216,9 +212,7 @@ class _SearchPlaceState extends State<SearchPlace> {
                         ? Container()
                         : loadingforpickup
                             ? CircularProgressIndicator()
-                            : Container(
-                                child: Text('No Places to be found'),
-                              ),
+                            : Container(),
                 destination
                     ? SingleChildScrollView(
                         child: Container(
@@ -253,9 +247,11 @@ class _SearchPlaceState extends State<SearchPlace> {
                           ),
                         ),
                       )
-                    : loadingfordestination
-                        ? CircularProgressIndicator()
-                        : Container(),
+                    : pickup
+                        ? Container()
+                        : loadingfordestination
+                            ? CircularProgressIndicator()
+                            : Container(),
               ],
             ),
           ),

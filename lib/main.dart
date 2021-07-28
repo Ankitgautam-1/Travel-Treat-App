@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:animated_splash_screen/animated_splash_screen.dart';
+import 'package:app/Data/DirectionProvider.dart';
 import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/Data/pickuploc.dart';
@@ -9,14 +10,12 @@ import 'package:app/views/LocationPermission.dart';
 import 'package:app/views/Maps.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
 import 'package:provider/provider.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Data/accountProvider.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
@@ -59,6 +58,9 @@ Future<void> main() async {
         ChangeNotifierProvider<PickupMarkers>(
           create: (context) => PickupMarkers(),
         ),
+        ChangeNotifierProvider<DirectionsProvider>(
+          create: (context) => DirectionsProvider(),
+        ),
       ],
       child: GetMaterialApp(
         debugShowCheckedModeBanner: false,
@@ -73,9 +75,8 @@ Future<void> main() async {
   );
 }
 
-// ignore: must_be_immutable
 class MyApp extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   MyApp({required this.app});
   @override
   _MyAppState createState() => _MyAppState(app: app);

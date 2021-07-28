@@ -7,7 +7,7 @@ class DestinationMarkers extends ChangeNotifier {
   // ignore: avoid_init_to_null
   dynamic address = null;
 
-  updateDestinationMarkers(LatLng selectedPlace, String address) {
+  updateDestinationMarkers(LatLng? selectedPlace, String? address) {
     places = selectedPlace;
     this.address = address;
     notifyListeners();

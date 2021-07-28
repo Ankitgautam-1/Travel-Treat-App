@@ -1,17 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:app/views/Phone_verify.dart';
 
 var ph;
 
-// ignore: must_be_immutable
 class Numverify extends StatefulWidget {
-  User user;
-  FirebaseApp app;
+  final User user;
+  final FirebaseApp app;
   Numverify({required this.user, required this.app});
   @override
   _NumverifyState createState() => _NumverifyState(user: user, app: app);
@@ -24,7 +22,6 @@ class _NumverifyState extends State<Numverify> {
   _NumverifyState({required this.user, required this.app});
   bool isloading = false;
   final GlobalKey<ScaffoldState> _scaffodkey = GlobalKey();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final _formkey = GlobalKey<FormState>();
   final TextEditingController phcontroller = TextEditingController();
   void phoneverify() async {

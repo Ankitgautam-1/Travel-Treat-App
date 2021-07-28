@@ -13,7 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class SignUp extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   SignUp({required this.app});
   @override
   _SignUpState createState() => _SignUpState(app: app);
@@ -30,7 +30,6 @@ class _SignUpState extends State<SignUp> {
   late List<String> _data;
   final _formkey = GlobalKey<FormState>();
   var _image;
-  FirebaseAuth _auth = FirebaseAuth.instance;
   bool image = false;
   bool isobscure = true;
 
@@ -92,9 +91,12 @@ class _SignUpState extends State<SignUp> {
     } else {
       Get.snackbar("Media Access ", "Media Access nedded to select image");
       PermissionStatus _access = await _permissionforcamera.request();
-      setState(() {
-        _permissionStatus = true;
-      });
+      if (_access == PermissionStatus.granted ||
+          _access == PermissionStatus.limited) {
+        setState(() {
+          _permissionStatus = true;
+        });
+      }
     }
   }
 

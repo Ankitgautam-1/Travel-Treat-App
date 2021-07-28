@@ -50,6 +50,7 @@ dependencies:
   permission_handler:
   change_app_package_name: ^1.0.0
   firebase_database: ^7.1.2
+  flutter_polyline_points: ^1.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

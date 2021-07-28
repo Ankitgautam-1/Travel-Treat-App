@@ -23,9 +23,8 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
-// ignore: must_be_immutable
 class Welcome extends StatefulWidget {
-  FirebaseApp app;
+  final FirebaseApp app;
   Welcome({required this.app});
   @override
   _WelcomeState createState() => _WelcomeState(app: app);
@@ -56,6 +55,8 @@ class _WelcomeState extends State<Welcome> {
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+      print(
+          "googleAuth.accessToken:${googleAuth.accessToken} googleAuth.idToken: ${googleAuth.idToken},");
       userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
       user = userCredential!.user!;
@@ -73,28 +74,16 @@ class _WelcomeState extends State<Welcome> {
         ph = result!['Phone'];
         image = result!['Image'];
         print("Account details==$username ,$email,$image,$ph");
-        UserAccount userAccount = UserAccount(
-            Email: email!,
-            Image: image!,
-            Ph: ph!,
-            Uid: user.uid,
-            Username: username!);
 
-        bool cache_image = await File(image!).exists();
-        print("cache_image:$cache_image");
-        if (cache_image) {
+        bool cacheimage = await File(image!).exists();
+        print("cache_image:$cacheimage");
+        if (cacheimage) {
           Get.snackbar(
               "Account details", "Getting account details please await",
               snackPosition: SnackPosition.BOTTOM);
           Provider.of<ImageData>(context, listen: false)
               .updateimage(File(image!));
           print("Image is given $image");
-          UserAccount userAccData = UserAccount(
-              Email: email!,
-              Image: image,
-              Ph: ph,
-              Uid: user.uid,
-              Username: username!);
         } else {
           firebase_storage.Reference ref = firebase_storage
               .FirebaseStorage.instance
@@ -105,7 +94,7 @@ class _WelcomeState extends State<Welcome> {
           print("url:->$url");
           Dio newimage = Dio();
           String savePath =
-              Directory.systemTemp.path + '/' + user.uid + "_profile";
+              Directory.systemTemp.path + '/' + user.uid + "_profile_google";
           await newimage.download(url, savePath,
               options: Options(responseType: ResponseType.bytes));
           db.child('Users').child(user.uid).update({"Image": savePath});
@@ -214,7 +203,7 @@ class _WelcomeState extends State<Welcome> {
                 'asset/images/cab.jpg',
                 width: 360,
               ),
-              SizedBox(height: 28),
+              SizedBox(height: 20),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 10, horizontal: 80),
@@ -238,11 +227,15 @@ class _WelcomeState extends State<Welcome> {
                 height: 15,
               ),
               isloading
-                  ? Center(
-                      child: CircularProgressIndicator(),
+                  ? Container(
+                      height: 20,
+                      width: 20,
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
                     )
                   : SizedBox(
-                      height: 25,
+                      height: 20,
                     ),
               Center(
                 child: OutlinedButton.icon(
