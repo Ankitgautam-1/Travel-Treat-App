@@ -525,14 +525,17 @@ class _PrcState extends State<Prc> {
                   ),
                 ],
               ),
-              SizedBox(height: 10),
+              SizedBox(height: 25),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 90, vertical: 12),
                     primary: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     )),
                 onPressed: () async {
+                  FocusScope.of(context)
+                      .unfocus(); //to hide the keyboard by unfocusing on textformfield
                   _otp = _1st.text +
                       _2nd.text +
                       _3rd.text +
@@ -542,7 +545,10 @@ class _PrcState extends State<Prc> {
                   print("Your otp is  $_otp");
                   await verify(_otp);
                 },
-                child: Text('Verify OTP'),
+                child: Text(
+                  'Verify OTP',
+                  style: TextStyle(fontSize: 16),
+                ),
               ),
             ],
           ),

@@ -36,6 +36,7 @@ dependencies:
   google_sign_in: ^5.0.4
   google_fonts: ^2.1.0
   images_picker: ^1.2.4
+  introduction_screen: ^2.1.0
   google_maps_flutter: ^2.0.6
   location: ^4.3.0
   get: ^4.1.4

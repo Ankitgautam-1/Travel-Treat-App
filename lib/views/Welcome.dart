@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:app/models/userAccount.dart';
+import 'package:app/views/Dashboard.dart' as sign;
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
@@ -55,6 +57,7 @@ class _WelcomeState extends State<Welcome> {
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+      print("Credentials: $credential");
       print(
           "googleAuth.accessToken:${googleAuth.accessToken} googleAuth.idToken: ${googleAuth.idToken},");
       userCredential =
@@ -127,6 +130,12 @@ class _WelcomeState extends State<Welcome> {
         setState(() {
           isloading = true;
         });
+      } on PlatformException catch (e) {
+        Get.snackbar(" Google Sign In ",
+            "Error Occured during sign in internet connection strength is weak",
+            snackPosition: SnackPosition.BOTTOM,
+            duration: Duration(seconds: 4));
+        print("errors=$e");
       } catch (e) {
         print('Login $user');
         print(e);
@@ -227,11 +236,14 @@ class _WelcomeState extends State<Welcome> {
                 height: 15,
               ),
               isloading
-                  ? Container(
-                      height: 20,
-                      width: 20,
-                      child: Center(
-                        child: CircularProgressIndicator(),
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Container(
+                        height: 20,
+                        width: 20,
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
                       ),
                     )
                   : SizedBox(
@@ -242,7 +254,7 @@ class _WelcomeState extends State<Welcome> {
                   style: OutlinedButton.styleFrom(
                     primary: Colors.black,
                     shape: StadiumBorder(),
-                    padding: EdgeInsets.fromLTRB(10, 6, 10, 6),
+                    padding: EdgeInsets.symmetric(horizontal: 13, vertical: 6),
                   ),
                   label: Text(
                     'Sign In with Google',

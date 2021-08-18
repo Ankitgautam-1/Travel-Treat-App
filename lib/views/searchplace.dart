@@ -30,6 +30,8 @@ class _SearchPlaceState extends State<SearchPlace> {
   bool loadingfordestination = false;
   bool pickup = false;
   void pickupsearch(String placeString) async {
+    FocusScope.of(context)
+        .unfocus(); //to hide the keyboard by unfocusing on textformfield
     setState(() {
       loadingforpickup = true;
       pickup = false;
@@ -54,6 +56,8 @@ class _SearchPlaceState extends State<SearchPlace> {
   }
 
   void destinationsearch(String placeString) async {
+    FocusScope.of(context)
+        .unfocus(); //to hide the keyboard by unfocusing on textformfield
     setState(() {
       pickup = false;
       destination = false;
@@ -224,7 +228,7 @@ class _SearchPlaceState extends State<SearchPlace> {
                                 leading: GestureDetector(
                                     onTap: () {
                                       print(
-                                        'lat ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
+                                        'lat in destination ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
                                       );
                                       LatLng place = LatLng(
                                           placesList[index]["location"]["lat"],

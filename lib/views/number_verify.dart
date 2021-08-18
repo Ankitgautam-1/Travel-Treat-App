@@ -25,6 +25,8 @@ class _NumverifyState extends State<Numverify> {
   final _formkey = GlobalKey<FormState>();
   final TextEditingController phcontroller = TextEditingController();
   void phoneverify() async {
+    FocusScope.of(context)
+        .unfocus(); //to hide the keyboard by unfocusing on textformfield
     setState(() {
       isloading = true;
     });

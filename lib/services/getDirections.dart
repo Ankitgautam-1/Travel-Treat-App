@@ -60,8 +60,16 @@ class Directions {
             }
           }
           print("new here:->cordinates_collections:$cordinates_collections");
+
+          int time = res["route"]["duration"];
+          print("time $time");
+          int distance = res["route"]["distance"];
+          print("Time $time and Distance $distance");
+          print("time-->$time and distance-->$distance");
+
           Provider.of<DirectionsProvider>(context, listen: false)
-              .updateDirectionsProvider(cordinates_collections, bounds);
+              .updateDirectionsProvider(
+                  cordinates_collections, bounds, time, distance);
 
           return cordinates_collections;
         } catch (e) {

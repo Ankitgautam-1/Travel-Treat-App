@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
@@ -116,19 +117,25 @@ class _SignInState extends State<SignIn> {
           } else {
             Get.offAll(LocationPermissoin(app: app));
           }
+        } on PlatformException catch (e) {
+          Get.snackbar("Sign In ",
+              "Error Occured during sign in internet connection strength is weak",
+              snackPosition: SnackPosition.BOTTOM,
+              duration: Duration(seconds: 4));
         } catch (e) {
           print(e);
         }
       } on FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found') {
-          Get.snackbar("Sign In", "Error Occured $e",
+          Get.snackbar("Sign In", "Error Occured usernot found",
               snackPosition: SnackPosition.BOTTOM);
         } else if (e.code == 'wrong-password') {
-          Get.snackbar("Sign In", "Error Occured $e",
+          Get.snackbar("Sign In", "Error Occured invalid password",
               snackPosition: SnackPosition.BOTTOM);
         }
       } catch (e) {
-        Get.snackbar("Sign In", "Error Occured $e");
+        Get.snackbar("Sign In", "Error Occured $e",
+            snackPosition: SnackPosition.BOTTOM);
       }
       setState(() {
         isloading = false;
@@ -232,7 +239,7 @@ class _SignInState extends State<SignIn> {
                       ),
                     ),
                     SizedBox(
-                      height: 20,
+                      height: MediaQuery.of(context).size.height * 0.04,
                     ),
                     //input password
                     Container(
@@ -260,7 +267,7 @@ class _SignInState extends State<SignIn> {
                             },
                           ),
                           prefixIcon:
-                              Icon(Icons.password, color: Colors.black87),
+                              Icon(Icons.vpn_key, color: Colors.black87),
                           contentPadding: EdgeInsets.all(20),
                           hintText: "Password",
                           border: OutlineInputBorder(
@@ -276,7 +283,7 @@ class _SignInState extends State<SignIn> {
                       ),
                     ),
                     SizedBox(
-                      height: 20,
+                      height: MediaQuery.of(context).size.height * 0.04,
                     ),
                   ],
                 ),
@@ -291,6 +298,8 @@ class _SignInState extends State<SignIn> {
                   ),
                 ),
                 onPressed: () async {
+                  FocusScope.of(context)
+                      .unfocus(); //to hide the keyboard by unfocusing on textformfield
                   await loginwithemail();
                 },
                 child: Text(
@@ -301,7 +310,7 @@ class _SignInState extends State<SignIn> {
                 ),
               ),
               SizedBox(
-                height: 20,
+                height: MediaQuery.of(context).size.height * 0.04,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -320,7 +329,7 @@ class _SignInState extends State<SignIn> {
                       ' Sign Up',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.black,
+                        color: Colors.blue,
                       ),
                     ),
                   ),

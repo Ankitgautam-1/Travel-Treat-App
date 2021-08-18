@@ -9,6 +9,8 @@ import 'package:app/models/userAccount.dart';
 import 'package:app/views/LocationPermission.dart';
 import 'package:app/views/Maps.dart';
 import 'package:app/views/Welcome.dart';
+import 'package:app/views/introduction_page.dart';
+import 'package:app/views/test.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -84,16 +86,24 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   var uid, image, username, ph, email;
-
+  bool intro = true;
   FirebaseApp app;
   loc.Location location = loc.Location();
   bool locationService = false;
   _MyAppState({required this.app});
   @override
   void initState() {
-    checkuid();
-
+    checkonbord();
     super.initState();
+    checkuid();
+  }
+
+  void checkonbord() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? val = prefs.getBool("IntroPage");
+    if (val != null) {
+      intro = val;
+    }
   }
 
   void checkuid() async {
@@ -167,7 +177,9 @@ class _MyAppState extends State<MyApp> {
       splash: 'asset/Animation/cab-animation.gif',
       backgroundColor: Colors.white,
       nextScreen: uid == ""
-          ? Welcome(app: app)
+          ? intro
+              ? OnBoardingPage(app: app)
+              : Welcome(app: app)
           : haspermission && locationService
               ? Maps(app: app)
               : LocationPermissoin(app: app),

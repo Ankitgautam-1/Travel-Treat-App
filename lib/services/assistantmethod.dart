@@ -26,6 +26,8 @@ class Geocoding {
         var address = decodeData["results"][0]["formatted"];
         var lat = decodeData["results"][0]["geometry"]["lat"];
         var lng = decodeData["results"][0]["geometry"]["lng"];
+        print(baseurl);
+        print("response:$jsonData");
         print(" LatLng :$lat and $lng ");
 
         print('Your address is ->$address');

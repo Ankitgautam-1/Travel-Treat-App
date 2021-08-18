@@ -21,7 +21,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
   _LocationPermissoinState({required this.app});
   loc.Location location = loc.Location();
   final LocationPermissionLevel _permissionLevel =
-      LocationPermissionLevel.locationAlways;
+      LocationPermissionLevel.locationWhenInUse;
 
   Future<void> requestPermission(
       LocationPermissionLevel permissionLevel) async {

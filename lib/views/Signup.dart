@@ -36,6 +36,8 @@ class _SignUpState extends State<SignUp> {
   final Permission _permissionforcamera = Permission.mediaLibrary;
 
   void _create() async {
+    FocusScope.of(context)
+        .unfocus(); //to hide the keyboard by unfocusing on textformfield
     if (_formkey.currentState!.validate()) {
       if (image) {
         Provider.of<ImageData>(context, listen: false).updateimage(_image);
@@ -238,23 +240,34 @@ class _SignUpState extends State<SignUp> {
                         clipBehavior: Clip.antiAlias,
                         fit: StackFit.expand,
                         children: [
-                          !image
-                              ? CircleAvatar(
-                                  backgroundImage:
-                                      AssetImage('asset/images/profile.jpg'),
-                                  backgroundColor: Colors.grey[200])
-                              : CircleAvatar(
-                                  child: ClipOval(
-                                    child: SizedBox(
-                                      width: 115,
-                                      height: 140,
-                                      child: Image.file(
-                                        _image,
-                                        fit: BoxFit.cover,
+                          Container(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.grey.withOpacity(0.19),
+                                    spreadRadius: 0,
+                                    blurRadius: 50,
+                                    offset: Offset(0, 0))
+                              ],
+                            ),
+                            child: !image
+                                ? CircleAvatar(
+                                    backgroundImage:
+                                        AssetImage('asset/images/profile.jpg'),
+                                    backgroundColor: Colors.grey[200])
+                                : CircleAvatar(
+                                    child: ClipOval(
+                                      child: SizedBox(
+                                        width: 115,
+                                        height: 140,
+                                        child: Image.file(
+                                          _image,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                          ),
                           Positioned(
                             right: 0,
                             bottom: 0,
@@ -404,7 +417,7 @@ class _SignUpState extends State<SignUp> {
                               },
                             ),
                             prefixIcon:
-                                Icon(Icons.password, color: Colors.black87),
+                                Icon(Icons.vpn_key, color: Colors.black87),
                             contentPadding: EdgeInsets.all(20),
                             hintText: "Password",
                             border: OutlineInputBorder(
@@ -420,7 +433,7 @@ class _SignUpState extends State<SignUp> {
                         ),
                       ),
                       SizedBox(
-                        height: 20,
+                        height: 33,
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -443,7 +456,7 @@ class _SignUpState extends State<SignUp> {
                         ),
                       ),
                       SizedBox(
-                        height: 8,
+                        height: 35,
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -462,11 +475,14 @@ class _SignUpState extends State<SignUp> {
                               ' Sign In',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.black,
+                                color: Colors.blue,
                               ),
                             ),
                           ),
                         ],
+                      ),
+                      SizedBox(
+                        height: 15,
                       ),
                     ],
                   ),
