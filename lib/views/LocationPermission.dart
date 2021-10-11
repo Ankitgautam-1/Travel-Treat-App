@@ -1,10 +1,13 @@
+import 'package:app/views/Dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:location_permissions/location_permissions.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
-import 'package:app/views/Maps.dart';
+
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
@@ -49,7 +52,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Maps(app: app));
+                Get.offAll(Dashboard(app: app));
               } else {
                 Get.snackbar(
                   "Location Permission ",
@@ -62,7 +65,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
         },
       );
     } else {
-      Get.offAll(Maps(app: app));
+      Get.offAll(Dashboard(app: app));
     }
   }
 
@@ -82,30 +85,42 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
                 "Location Permission",
                 style: TextStyle(fontSize: 30),
               ),
-              SizedBox(
-                height: 35,
-              ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  "Our App Privacy Notice describes the information we collect, how it is used and shared, and your choices regarding this information. \n \nThis policy applies to any users of the services of our app or its affiliates anywhere in the world, and to anyone else who contacts Us or otherwise submits information to App, unless noted in the Privacy Notice.",
-                  textAlign: TextAlign.left,
-                  style: TextStyle(fontSize: 15),
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Image.asset(
+                  'asset/images/location_permission.jpg',
+                  width: MediaQuery.of(context).size.width * 0.9,
                 ),
               ),
-              SizedBox(
-                height: 20,
-              ),
-              ElevatedButton(
+              TextButton.icon(
+                icon: Icon(Icons.location_on_rounded),
+                label: Text("Give Permission"),
+                style: ElevatedButton.styleFrom(
+                  onPrimary: Color.fromRGBO(28, 18, 140, 1),
+                  primary: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      width: 1,
+                      color: Color.fromRGBO(28, 18, 140, 1),
+                    ),
+                  ),
+                ),
                 onPressed: () async {
                   await requestPermission(_permissionLevel);
                 },
-                child: Text('Give Permission'),
               ),
               SizedBox(
                 height: 35,
               ),
-              ElevatedButton(
+              TextButton.icon(
+                label: Text("Open Settings"),
+                icon: Icon(CupertinoIcons.settings),
+                style: ElevatedButton.styleFrom(
+                    onPrimary: Colors.white,
+                    primary: Color.fromRGBO(28, 18, 140, 1),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10))),
                 onPressed: () async {
                   await OpenAppsSettings.openAppsSettings(
                       settingsCode: SettingsCode.APP_SETTINGS,
@@ -119,7 +134,6 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
                         }
                       });
                 },
-                child: Text('Open Settings'),
               ),
             ],
           ),

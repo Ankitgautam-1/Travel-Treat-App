@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:app/views/Dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -12,7 +13,6 @@ import 'package:app/Data/accountProvider.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/models/userAccount.dart';
 import 'package:app/views/LocationPermission.dart';
-import 'package:app/views/Maps.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
@@ -135,7 +135,9 @@ class _EmailVerifyState extends State<EmailVerify> {
       final String username = data[0];
       final String email = data[1];
       final String ph = data[2];
-      final dynamic profile = data[4];
+      final String emph = data[3];
+      final dynamic profile = data[5];
+
       setState(() {
         isloading = true;
       });
@@ -155,7 +157,8 @@ class _EmailVerifyState extends State<EmailVerify> {
             "Username": "$username",
             "Email": "$email",
             "Phone": "$ph",
-            "Image": prof.path
+            "Image": prof.path,
+            "emph": emph,
           },
         );
         Provider.of<AccountProvider>(context, listen: false).updateuseraccount(
@@ -164,6 +167,7 @@ class _EmailVerifyState extends State<EmailVerify> {
                 Image: profile,
                 Ph: ph,
                 Uid: uid,
+                emph: emph,
                 Username: username));
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -172,6 +176,7 @@ class _EmailVerifyState extends State<EmailVerify> {
         prefs.setString("Ph", ph);
         prefs.setString("Image", prof.path);
         prefs.setString("Uid", uid);
+        prefs.setString("emph", emph);
         if (await permissions.Permission.locationWhenInUse.isGranted ||
             await permissions.Permission.locationWhenInUse.isLimited ||
             await permissions.Permission.location.isGranted ||
@@ -206,7 +211,7 @@ class _EmailVerifyState extends State<EmailVerify> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Maps(app: app));
+                Get.offAll(Dashboard(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -215,7 +220,7 @@ class _EmailVerifyState extends State<EmailVerify> {
         },
       );
     } else {
-      Get.offAll(Maps(app: app));
+      Get.offAll(Dashboard(app: app));
     }
   }
 

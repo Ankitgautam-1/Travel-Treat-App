@@ -47,7 +47,7 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
           PageViewModel(
             title: "Account Creation",
             body:
-                "Sign in & Sign up process is easy and supports Email & Google account ",
+                "Sign in & Sign up process is easy and supports Email & Google account.",
             image: Image.asset(
               "asset/images/1st_image.png",
               fit: BoxFit.fitWidth,
@@ -57,14 +57,14 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
           PageViewModel(
             title: "Cab Availability",
             body:
-                "Travel Treat has huge system of cabs which increses availability of cabs",
+                "Travel Treat has huge system of cab's services  which increses availability of cabs.",
             image: _buildImage('2nd_image.png'),
             decoration: pageDecoration,
           ),
           PageViewModel(
             title: "Location Services",
             body:
-                "Travel Treat uses user location to increase the user exprience and to give better navigation of driver",
+                "Travel Treat uses user location to increase the user exprience and the details will be given to diver for better navigation of driver ,user can track there ride at any point of time.",
             image: _buildImage('3rd_image.png'),
             decoration: pageDecoration,
           ),
@@ -84,20 +84,28 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
           Icons.arrow_forward,
           color: Color.fromRGBO(25, 32, 82, 1),
         ),
-        done: const Text(
-          'Done',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
+        done: Container(
+          margin: EdgeInsets.only(bottom: 4),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
             color: Color.fromRGBO(25, 32, 82, 1),
+          ),
+          child: const Text(
+            'Get Started',
+            style: TextStyle(
+              fontWeight: FontWeight.w300,
+              color: Colors.white,
+            ),
           ),
         ),
         curve: Curves.fastLinearToSlowEaseIn,
         controlsMargin: const EdgeInsets.all(0),
         controlsPadding: const EdgeInsets.fromLTRB(8.0, 4.0, 8.0, 4.0),
         dotsDecorator: const DotsDecorator(
-          size: Size(10.0, 10.0),
+          size: Size(6.0, 6.0),
           color: Color(0xFFBDBDBD),
-          activeSize: Size(22.0, 10.0),
+          activeSize: Size(34.0, 5.0),
           activeColor: Color.fromRGBO(25, 32, 82, 1),
           activeShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(25.0)),

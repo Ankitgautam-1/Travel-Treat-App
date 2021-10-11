@@ -6,8 +6,10 @@ import 'package:app/Data/image.dart';
 import 'package:app/Data/pickuploc.dart';
 import 'package:app/Data/userData.dart';
 import 'package:app/models/userAccount.dart';
+import 'package:app/views/Dashboard.dart';
 import 'package:app/views/LocationPermission.dart';
-import 'package:app/views/Maps.dart';
+import 'package:app/views/Signin.dart';
+import 'package:app/views/TrailPage.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:app/views/introduction_page.dart';
 import 'package:app/views/test.dart';
@@ -85,7 +87,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  var uid, image, username, ph, email;
+  var uid, image, username, ph, email, emph;
   bool intro = true;
   FirebaseApp app;
   loc.Location location = loc.Location();
@@ -114,12 +116,14 @@ class _MyAppState extends State<MyApp> {
       email = prefs.getString('Email');
       image = prefs.getString('Image');
       ph = prefs.getString('Ph');
+      emph = prefs.getString("emph");
       Provider.of<ImageData>(context, listen: false).updateimage(File(image));
       UserAccount userAccData = UserAccount(
           Email: email,
           Image: image ?? "",
           Ph: ph,
           Uid: uid,
+          emph: emph,
           Username: username);
       Provider.of<AccountProvider>(context, listen: false)
           .updateuseraccount(userAccData);
@@ -157,7 +161,7 @@ class _MyAppState extends State<MyApp> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Maps(app: app));
+                Get.offAll(Dashboard(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -166,7 +170,7 @@ class _MyAppState extends State<MyApp> {
         },
       );
     } else {
-      Get.offAll(Maps(app: app));
+      Get.offAll(Dashboard(app: app));
     }
   }
 
@@ -179,11 +183,17 @@ class _MyAppState extends State<MyApp> {
       nextScreen: uid == ""
           ? intro
               ? OnBoardingPage(app: app)
-              : Welcome(app: app)
+              : Welcome(
+                  app:
+                      app) //!!Change here to Welcome after trailpage for sign in is over
           : haspermission && locationService
-              ? Maps(app: app)
+              ? Dashboard(app: app)
               : LocationPermissoin(app: app),
       splashIconSize: 350,
     );
   }
 }
+
+/*TrailPage(
+                  app:
+                      app)  */

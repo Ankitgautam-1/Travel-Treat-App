@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:app/models/userAccount.dart';
 import 'package:app/views/Dashboard.dart' as sign;
+import 'package:app/views/Dashboard.dart';
+import 'package:app/views/TrailPage.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -15,7 +17,6 @@ import 'package:open_apps_settings/settings_enum.dart';
 import 'package:app/Data/accountProvider.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/views/LocationPermission.dart';
-import 'package:app/views/Maps.dart';
 import 'package:app/views/Signin.dart';
 import 'package:app/views/Signup.dart';
 import 'package:app/views/number_verify.dart';
@@ -42,6 +43,7 @@ class _WelcomeState extends State<Welcome> {
   String? username;
   String? email;
   String? image;
+  String? emph;
   loc.Location location = loc.Location();
   Future signInWithGoogle() async {
     try {
@@ -76,7 +78,8 @@ class _WelcomeState extends State<Welcome> {
         email = result!['Email'];
         ph = result!['Phone'];
         image = result!['Image'];
-        print("Account details==$username ,$email,$image,$ph");
+        emph = result['emph'];
+        print("Account details==$username ,$email,$image,$ph,$emph");
 
         bool cacheimage = await File(image!).exists();
         print("cache_image:$cacheimage");
@@ -111,9 +114,11 @@ class _WelcomeState extends State<Welcome> {
         prefs.setString("Email", email!);
         prefs.setString("Ph", ph!);
         prefs.setString("Image", image!);
+        prefs.setString("emph", emph!);
         UserAccount userAccData = UserAccount(
             Email: email!,
             Image: image,
+            emph: emph!,
             Ph: ph,
             Uid: user.uid,
             Username: username!);
@@ -131,10 +136,14 @@ class _WelcomeState extends State<Welcome> {
           isloading = true;
         });
       } on PlatformException catch (e) {
-        Get.snackbar(" Google Sign In ",
-            "Error Occured during sign in internet connection strength is weak",
-            snackPosition: SnackPosition.BOTTOM,
-            duration: Duration(seconds: 4));
+        isloading = false;
+        print("weak network");
+        Get.snackbar(
+          " Google Sign In ",
+          "Error Occured during sign in internet connection strength is weak",
+          snackPosition: SnackPosition.BOTTOM,
+          duration: Duration(seconds: 4),
+        );
         print("errors=$e");
       } catch (e) {
         print('Login $user');
@@ -167,7 +176,7 @@ class _WelcomeState extends State<Welcome> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Maps(app: app));
+                Get.offAll(Dashboard(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -176,7 +185,7 @@ class _WelcomeState extends State<Welcome> {
         },
       );
     } else {
-      Get.offAll(Maps(app: app));
+      Get.offAll(Dashboard(app: app));
     }
   }
 
@@ -212,14 +221,14 @@ class _WelcomeState extends State<Welcome> {
                 'asset/images/cab.jpg',
                 width: 360,
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 30),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 10, horizontal: 80),
                   primary: Colors.black87,
                   onPrimary: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25.0),
+                    borderRadius: BorderRadius.circular(13.0),
                   ),
                 ),
                 onPressed: () {
@@ -271,6 +280,12 @@ class _WelcomeState extends State<Welcome> {
               ),
               SizedBox(
                 height: 10,
+                child: TextButton(
+                  onPressed: () {
+                    Get.to(SignIn(app: app));
+                  },
+                  child: Text("Login"),
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

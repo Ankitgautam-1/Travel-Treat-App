@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:images_picker/images_picker.dart';
 import 'package:get/get.dart';
@@ -25,6 +26,7 @@ class _SignUpState extends State<SignUp> {
   TextEditingController _username = TextEditingController();
   TextEditingController _email = TextEditingController();
   TextEditingController _ph = TextEditingController();
+  TextEditingController _emph = TextEditingController();
   TextEditingController _pass = TextEditingController();
   User? user;
   late List<String> _data;
@@ -32,7 +34,8 @@ class _SignUpState extends State<SignUp> {
   var _image;
   bool image = false;
   bool isobscure = true;
-
+  String _mobileNumber = "";
+  bool permission = false;
   final Permission _permissionforcamera = Permission.mediaLibrary;
 
   void _create() async {
@@ -49,6 +52,7 @@ class _SignUpState extends State<SignUp> {
           _username.text,
           _email.text,
           _ph.text,
+          _emph.text,
           _pass.text,
           _image.toString(),
         ];
@@ -68,7 +72,7 @@ class _SignUpState extends State<SignUp> {
   void deleteprofile() {
     setState(() {
       image = false;
-      _image = Image.asset('asset/images/profile.jpg');
+      _image = Image.asset('asset/images/profile_pic.jpg');
     });
   }
 
@@ -199,13 +203,19 @@ class _SignUpState extends State<SignUp> {
 
   @override
   Widget build(BuildContext context) {
+    _ph = TextEditingController(text: permission ? _mobileNumber : "");
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          toolbarHeight: 40,
+          toolbarHeight: MediaQuery.of(context).size.height * 0.06,
           backgroundColor: Colors.white,
           elevation: 0,
+          title: Text(
+            'Sign Up',
+            style: TextStyle(color: Colors.black),
+          ),
+          centerTitle: true,
           leading: IconButton(
             icon: Icon(
               Icons.arrow_back,
@@ -213,6 +223,7 @@ class _SignUpState extends State<SignUp> {
               size: 25,
             ),
             onPressed: () {
+              print("back");
               Get.back();
             },
           ),
@@ -224,78 +235,92 @@ class _SignUpState extends State<SignUp> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  'Sign Up',
-                  style: TextStyle(fontSize: 38),
-                ),
                 SizedBox(
                   height: 20,
                 ),
                 Column(
                   children: [
-                    SizedBox(
-                      height: 115,
-                      width: 140,
-                      child: Stack(
-                        clipBehavior: Clip.antiAlias,
-                        fit: StackFit.expand,
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.grey.withOpacity(0.19),
-                                    spreadRadius: 0,
-                                    blurRadius: 50,
-                                    offset: Offset(0, 0))
-                              ],
-                            ),
-                            child: !image
-                                ? CircleAvatar(
-                                    backgroundImage:
-                                        AssetImage('asset/images/profile.jpg'),
-                                    backgroundColor: Colors.grey[200])
-                                : CircleAvatar(
-                                    child: ClipOval(
-                                      child: SizedBox(
-                                        width: 115,
-                                        height: 140,
-                                        child: Image.file(
-                                          _image,
-                                          fit: BoxFit.cover,
+                          Wrap(
+                            children: [
+                              Text(
+                                "Let\'s Ride with\nTravel Treat",
+                                style: TextStyle(
+                                    fontSize: 24, fontWeight: FontWeight.w500),
+                              )
+                            ],
+                          ),
+                          SizedBox(
+                            height: 100,
+                            width: 100,
+                            child: Stack(
+                              clipBehavior: Clip.antiAlias,
+                              fit: StackFit.expand,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    boxShadow: [
+                                      BoxShadow(
+                                          color: Colors.grey.withOpacity(0.19),
+                                          spreadRadius: 0,
+                                          blurRadius: 50,
+                                          offset: Offset(0, 0))
+                                    ],
+                                  ),
+                                  child: !image
+                                      ? CircleAvatar(
+                                          backgroundImage: AssetImage(
+                                              'asset/images/profile_pic.jpg'),
+                                          backgroundColor: Colors.grey[200])
+                                      : CircleAvatar(
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(58),
+                                            child: SizedBox(
+                                              width: 116,
+                                              height: 116,
+                                              child: Image.file(
+                                                _image,
+                                                fit: BoxFit.cover,
+                                                width: 116,
+                                                height: 116,
+                                              ),
+                                            ),
+                                          ),
                                         ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: SizedBox(
+                                    height: 38,
+                                    width: 38,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.all(0),
+                                        primary: Colors.black,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(50),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        Get.bottomSheet(get());
+                                      },
+                                      child: Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 20,
                                       ),
                                     ),
                                   ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: SizedBox(
-                              height: 46,
-                              width: 46,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.all(0),
-                                  primary: Colors.black,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  Get.bottomSheet(get());
-                                },
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 25,
-                                ),
-                              ),
+                                )
+                              ],
                             ),
-                          )
-                        ],
-                      ),
-                    ),
+                          ),
+                        ])
                   ],
                 ),
                 SizedBox(
@@ -314,11 +339,55 @@ class _SignUpState extends State<SignUp> {
                               : "Username should be at least 6 charcter",
                           keyboardType: TextInputType.text,
                           textInputAction: TextInputAction.next,
+                          cursorColor: Colors.grey[600],
                           decoration: InputDecoration(
                             prefixIcon:
                                 Icon(Icons.person, color: Colors.black87),
                             contentPadding: EdgeInsets.all(20),
                             hintText: "Username",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(width: .6),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide:
+                                  BorderSide(width: 1, color: Colors.black),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.03,
+                      ),
+                      Container(
+                        width: 320,
+                        child: TextFormField(
+                          obscureText: isobscure,
+                          controller: _pass,
+                          validator: (val) => val!.length > 6
+                              ? null
+                              : "password should be at least 6 charcter",
+                          keyboardType: TextInputType.text,
+                          textInputAction: TextInputAction.send,
+                          decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              icon: FaIcon(
+                                isobscure
+                                    ? FontAwesomeIcons.eye
+                                    : FontAwesomeIcons.eyeSlash,
+                                color: Colors.black87,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  isobscure = !isobscure;
+                                });
+                              },
+                            ),
+                            prefixIcon:
+                                Icon(Icons.vpn_key, color: Colors.black87),
+                            contentPadding: EdgeInsets.all(20),
+                            hintText: "Password",
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide(width: .6),
@@ -395,31 +464,17 @@ class _SignUpState extends State<SignUp> {
                       Container(
                         width: 320,
                         child: TextFormField(
-                          obscureText: isobscure,
-                          controller: _pass,
-                          validator: (val) => val!.length > 6
+                          controller: _emph,
+                          validator: (val) => val!.length == 10
                               ? null
-                              : "password should be at least 6 charcter",
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.send,
+                              : "Phone Number should be 10 digits",
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
                           decoration: InputDecoration(
-                            suffixIcon: IconButton(
-                              icon: FaIcon(
-                                isobscure
-                                    ? FontAwesomeIcons.eye
-                                    : FontAwesomeIcons.eyeSlash,
-                                color: Colors.black87,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  isobscure = !isobscure;
-                                });
-                              },
-                            ),
-                            prefixIcon:
-                                Icon(Icons.vpn_key, color: Colors.black87),
+                            prefixIcon: Icon(Icons.phone_android_rounded,
+                                color: Colors.black87),
                             contentPadding: EdgeInsets.all(20),
-                            hintText: "Password",
+                            hintText: "Emergency phone number",
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide(width: .6),
@@ -433,13 +488,13 @@ class _SignUpState extends State<SignUp> {
                         ),
                       ),
                       SizedBox(
-                        height: 33,
+                        height: MediaQuery.of(context).size.height * 0.03,
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          primary: Colors.black,
+                          primary: Color.fromRGBO(46, 46, 46, 1),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           padding: EdgeInsets.symmetric(
                             horizontal: 50,

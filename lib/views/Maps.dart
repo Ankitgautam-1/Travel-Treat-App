@@ -32,7 +32,9 @@ class Maps extends StatefulWidget {
   _MapsState createState() => _MapsState(app: app);
 }
 
-class _MapsState extends State<Maps> {
+class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   FirebaseApp app;
   _MapsState({required this.app});
   var username, email, ph, image, provider, uid;
@@ -44,7 +46,6 @@ class _MapsState extends State<Maps> {
   List<Marker> placeMarker = [];
   late GoogleMapController newmapcontroller;
   Completer<GoogleMapController> mapcontroller = Completer();
-  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
 
   late Position currentPosition;
   List<LatLng> polylineCoordinates = [];
@@ -150,8 +151,8 @@ class _MapsState extends State<Maps> {
     if (Provider.of<ImageData>(context, listen: false).image != null) {
       Provider.of<ImageData>(context, listen: false).updateimage(null);
     }
-    UserAccount userAccount =
-        UserAccount(Email: "", Image: "", Ph: "", Uid: "", Username: "");
+    UserAccount userAccount = UserAccount(
+        Email: "", Image: "", Ph: "", Uid: "", Username: "", emph: "");
     Provider.of<AccountProvider>(context, listen: false)
         .updateuseraccount(userAccount);
     Provider.of<UserData>(context, listen: false).updatepickuplocation(null);
@@ -261,21 +262,21 @@ class _MapsState extends State<Maps> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     print('rebuilding the widget');
     return SafeArea(
       child: Scaffold(
-        key: _scaffoldKey,
         body: SingleChildScrollView(
           child: Container(
-              height: MediaQuery.of(context).size.height * 0.958,
+              height: MediaQuery.of(context).size.height * 0.879,
               width: MediaQuery.of(context).size.width,
               child: Stack(
                 children: [
                   Container(
-                    height: MediaQuery.of(context).size.height * 0.88,
+                    height: MediaQuery.of(context).size.height * 0.80,
                     child: GoogleMap(
                       mapType: MapType.normal,
-                      indoorViewEnabled: true,
+                      indoorViewEnabled: false,
                       minMaxZoomPreference: MinMaxZoomPreference.unbounded,
                       initialCameraPosition: _initpostion,
                       myLocationButtonEnabled: true,
@@ -283,6 +284,7 @@ class _MapsState extends State<Maps> {
                       zoomGesturesEnabled: true,
                       zoomControlsEnabled: true,
                       compassEnabled: false,
+                      mapToolbarEnabled: true,
                       markers: Set.from(placeMarker),
                       trafficEnabled: false,
                       buildingsEnabled: true,
@@ -295,22 +297,22 @@ class _MapsState extends State<Maps> {
                       },
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 15, left: 20),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Color.fromRGBO(255, 255, 255, .7),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        tooltip: "Menu",
-                        onPressed: () {
-                          _scaffoldKey.currentState!.openDrawer();
-                        },
-                        icon: Icon(Icons.menu),
-                      ),
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: const EdgeInsets.only(top: 15, left: 20),
+                  //   child: Container(
+                  //     decoration: BoxDecoration(
+                  //       color: Color.fromRGBO(255, 255, 255, .7),
+                  //       shape: BoxShape.circle,
+                  //     ),
+                  //     child: IconButton(
+                  //       tooltip: "Menu",
+                  //       onPressed: () {
+                  //         _scaffoldKey.currentState!.openDrawer();
+                  //       },
+                  //       icon: Icon(Icons.menu),
+                  //     ),  ///!this is moved to dashboard
+                  //   ),
+                  // ),
                   cab_details
                       ? Padding(
                           padding: const EdgeInsets.only(top: 90, left: 20),
@@ -359,7 +361,7 @@ class _MapsState extends State<Maps> {
                       : Container(),
                   DraggableScrollableSheet(
                     initialChildSize: 0.3,
-                    minChildSize: 0.12,
+                    minChildSize: 0.138,
                     maxChildSize: 0.4,
                     builder: (BuildContext buildContext,
                         ScrollController scrollController) {
@@ -1076,116 +1078,6 @@ class _MapsState extends State<Maps> {
                 ],
               )),
         ),
-        drawer: Drawer(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                profile(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget profile() {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.958,
-      color: Colors.white,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 20,
-          ),
-          Center(
-            child: Provider.of<ImageData>(context, listen: false).image == null
-                ? CircleAvatar(
-                    backgroundColor: Colors.black26,
-                    radius: 55,
-                    backgroundImage: FileImage(File(
-                        Provider.of<AccountProvider>(context, listen: false)
-                            .userAccount
-                            .Image!)),
-                  )
-                : CircleAvatar(
-                    backgroundColor: Colors.black26,
-                    radius: 55,
-                    backgroundImage: FileImage(
-                        Provider.of<ImageData>(context, listen: false).image!),
-                  ),
-          ),
-          SizedBox(
-            height: 35,
-          ),
-          Text(
-            Provider.of<AccountProvider>(context, listen: false)
-                .userAccount
-                .Username,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          SizedBox(
-            height: 20,
-          ),
-          Text(
-            Provider.of<AccountProvider>(context, listen: false)
-                .userAccount
-                .Email,
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(
-            height: 20,
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.home_rounded,
-            ),
-            title: Text('Home'),
-            selected: true,
-            onTap: () {
-              print("Home visited");
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.account_box,
-            ),
-            title: Text('Account'),
-            selected: false,
-            onTap: () {
-              print("accont visited");
-            },
-          ),
-          ListTile(
-            leading: FaIcon(FontAwesomeIcons.car),
-            title: Text('My trips'),
-            selected: false,
-            onTap: () {
-              print("Trip visited");
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.settings,
-            ),
-            title: Text('Settings'),
-            selected: false,
-            onTap: () {
-              print("settings visited");
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.logout_rounded,
-            ),
-            title: Text('Log Out'),
-            selected: false,
-            onTap: () {
-              logoutgoogleuser();
-            },
-          ),
-        ],
       ),
     );
   }
