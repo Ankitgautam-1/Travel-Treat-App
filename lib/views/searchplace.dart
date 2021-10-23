@@ -86,18 +86,26 @@ class _SearchPlaceState extends State<SearchPlace> {
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          title: Text(
+            "Select Location",
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+          backgroundColor: Colors.black,
+        ),
         body: SingleChildScrollView(
           child: Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height * 0.95,
             child: Column(
               children: [
-                SizedBox(height: 60),
+                SizedBox(height: 35),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.my_location_rounded,
+                      Icons.my_location,
                       size: 24,
                     ),
                     SizedBox(
@@ -141,8 +149,9 @@ class _SearchPlaceState extends State<SearchPlace> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.location_on_rounded,
+                      Icons.location_on,
                       size: 24,
+                      color: Colors.redAccent[700],
                     ),
                     SizedBox(
                       width: 8,
@@ -172,11 +181,12 @@ class _SearchPlaceState extends State<SearchPlace> {
                   ],
                 ),
                 SizedBox(
-                  height: 28,
+                  height: 36,
                 ),
                 pickup
                     ? SingleChildScrollView(
                         child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 15),
                           height: 300,
                           child: ListView.builder(
                               itemCount: placesList.length,
@@ -205,7 +215,7 @@ class _SearchPlaceState extends State<SearchPlace> {
                                         Get.back();
                                         onPlaceSelect();
                                       },
-                                      child: Icon(Icons.location_on_rounded)),
+                                      child: Icon(Icons.location_on)),
                                   title:
                                       Text('${placesList[index]["address"]}'),
                                 );
@@ -215,46 +225,58 @@ class _SearchPlaceState extends State<SearchPlace> {
                     : destination
                         ? Container()
                         : loadingforpickup
-                            ? CircularProgressIndicator()
+                            ? CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 3,
+                              )
                             : Container(),
                 destination
                     ? SingleChildScrollView(
-                        child: Container(
-                          height: 300,
-                          child: ListView.builder(
-                            itemCount: placesList.length,
-                            itemBuilder: (context, index) {
-                              return ListTile(
-                                leading: GestureDetector(
-                                    onTap: () {
-                                      print(
-                                        'lat in destination ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
-                                      );
-                                      LatLng place = LatLng(
-                                          placesList[index]["location"]["lat"],
-                                          placesList[index]["location"]["lng"]);
+                        child: Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 15),
+                            height: 300,
+                            child: ListView.builder(
+                              itemCount: placesList.length,
+                              itemBuilder: (context, index) {
+                                return ListTile(
+                                  leading: GestureDetector(
+                                      onTap: () {
+                                        print(
+                                          'lat in destination ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
+                                        );
+                                        LatLng place = LatLng(
+                                            placesList[index]["location"]
+                                                ["lat"],
+                                            placesList[index]["location"]
+                                                ["lng"]);
 
-                                      String address =
-                                          placesList[index]["address"];
-                                      Provider.of<DestinationMarkers>(context,
-                                              listen: false)
-                                          .updateDestinationMarkers(
-                                              place, address);
-                                      print("place info:->$place");
-                                      Get.back();
-                                      onPlaceSelect();
-                                    },
-                                    child: Icon(Icons.location_on_rounded)),
-                                title: Text('${placesList[index]["address"]}'),
-                              );
-                            },
+                                        String address =
+                                            placesList[index]["address"];
+                                        Provider.of<DestinationMarkers>(context,
+                                                listen: false)
+                                            .updateDestinationMarkers(
+                                                place, address);
+                                        print("place info:->$place");
+                                        Get.back();
+                                        onPlaceSelect();
+                                      },
+                                      child: Icon(Icons.location_on)),
+                                  title:
+                                      Text('${placesList[index]["address"]}'),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       )
                     : pickup
                         ? Container()
                         : loadingfordestination
-                            ? CircularProgressIndicator()
+                            ? CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 3,
+                              )
                             : Container(),
               ],
             ),

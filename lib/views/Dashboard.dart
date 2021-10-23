@@ -177,7 +177,7 @@ class _DashboardState extends State<Dashboard> {
 
   Widget profile() {
     return Container(
-      height: MediaQuery.of(context).size.height,
+      height: MediaQuery.of(context).size.height * 0.96,
       color: Colors.white,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -238,45 +238,7 @@ class _DashboardState extends State<Dashboard> {
           ),
           ListTile(
             leading: Icon(
-              Icons.home_rounded,
-            ),
-            title: Text('Home'),
-            selected: true,
-            onTap: () {
-              print("Home visited");
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.account_box,
-            ),
-            title: Text('Account'),
-            selected: false,
-            onTap: () {
-              print("accont visited");
-            },
-          ),
-          ListTile(
-            leading: FaIcon(FontAwesomeIcons.car),
-            title: Text('My trips'),
-            selected: false,
-            onTap: () {
-              print("Trip visited");
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.settings,
-            ),
-            title: Text('Settings'),
-            selected: false,
-            onTap: () {
-              print("settings visited");
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.logout_rounded,
+              Icons.logout_sharp,
             ),
             title: Text('Log Out'),
             selected: false,

@@ -54,6 +54,9 @@ dependencies:
   flutter_polyline_points: ^1.0.0
   timer_count_down: ^2.2.0
   animations: ^2.0.1
+  cloud_firestore: ^2.5.3
+  geoflutterfire: ^3.0.1
+  line_icons: ^2.0.1
 
 dev_dependencies:
   flutter_test:

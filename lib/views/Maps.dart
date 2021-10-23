@@ -4,11 +4,14 @@ import 'package:app/Data/DirectionProvider.dart';
 
 import 'package:app/Data/pickuploc.dart';
 import 'package:app/services/getDirections.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geoflutterfire/geoflutterfire.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -21,6 +24,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:app/services/assistantmethod.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:app/views/searchplace.dart';
+import 'package:line_icons/line_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
@@ -36,6 +40,10 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
   FirebaseApp app;
+  final geo = Geoflutterfire();
+  late Stream<List<DocumentSnapshot>> locationStream;
+  late StreamSubscription<List<DocumentSnapshot<Object?>>> subs;
+  final _firestore = FirebaseFirestore.instance;
   _MapsState({required this.app});
   var username, email, ph, image, provider, uid;
   final CameraPosition _initpostion = CameraPosition(
@@ -45,6 +53,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   bool cab_details = false;
   List<Marker> placeMarker = [];
   late GoogleMapController newmapcontroller;
+
   Completer<GoogleMapController> mapcontroller = Completer();
 
   late Position currentPosition;
@@ -59,7 +68,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   List<LatLng>? poly = [];
   Set<Polyline> _polylines = {};
   late Position position;
-
+  String selectedCar = "Cab-UX";
+  String selectedPayment = "Cash";
   void track() async {
     positionStream =
         Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.high)
@@ -360,9 +370,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                         )
                       : Container(),
                   DraggableScrollableSheet(
-                    initialChildSize: 0.3,
+                    initialChildSize: 0.45,
                     minChildSize: 0.138,
-                    maxChildSize: 0.4,
+                    maxChildSize: 0.6,
                     builder: (BuildContext buildContext,
                         ScrollController scrollController) {
                       return !cab_details
@@ -627,8 +637,10 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                   width: 25,
                                                                   child:
                                                                       CircularProgressIndicator(
+                                                                    color: Colors
+                                                                        .black87,
                                                                     strokeWidth:
-                                                                        3,
+                                                                        2.5,
                                                                   ),
                                                                 ),
                                                               )
@@ -988,85 +1000,400 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                         SizedBox(
                                           height: 20,
                                         ),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: 300,
-                                              child: Column(
-                                                children: [
-                                                  Padding(
-                                                    padding: const EdgeInsets
-                                                            .symmetric(
-                                                        horizontal: 20),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.my_location,
-                                                          color: Colors.grey,
-                                                        ),
-                                                        SizedBox(
-                                                          width: 10,
-                                                        ),
-                                                        Text(
-                                                            "${Provider.of<PickupMarkers>(context, listen: false).places == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres.toString().substring(0, 31) : Provider.of<PickupMarkers>(context, listen: false).address.toString().substring(0, 31)}"),
-                                                      ],
+                                        Container(
+                                          width:
+                                              MediaQuery.of(context).size.width,
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: MediaQuery.of(context)
+                                                        .size
+                                                        .width *
+                                                    0.8,
+                                                child: Column(
+                                                  children: [
+                                                    Padding(
+                                                      padding: const EdgeInsets
+                                                              .symmetric(
+                                                          horizontal: 12),
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.my_location,
+                                                            color:
+                                                                Colors.blueGrey,
+                                                          ),
+                                                          SizedBox(
+                                                            width: 10,
+                                                          ),
+                                                          Text(
+                                                              "${Provider.of<PickupMarkers>(context, listen: false).places == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres.toString().substring(0, 31) : Provider.of<PickupMarkers>(context, listen: false).address.toString().substring(0, 31)}"),
+                                                        ],
+                                                      ),
                                                     ),
-                                                  ),
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            left: 50,
-                                                            right: 30),
-                                                    child: SizedBox(
-                                                      height: 20,
-                                                      child: Divider(
-                                                        thickness: 1,
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              left: 50,
+                                                              right: 30),
+                                                      child: SizedBox(
+                                                        height: 20,
+                                                        child: Divider(
+                                                          thickness: 1,
+                                                          color: Colors.black,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding: const EdgeInsets
+                                                              .symmetric(
+                                                          horizontal: 12),
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .location_on_rounded,
+                                                            color:
+                                                                Colors.red[900],
+                                                          ),
+                                                          SizedBox(
+                                                            width: 10,
+                                                          ),
+                                                          Text(
+                                                              "${Provider.of<DestinationMarkers>(context, listen: false).address.toString().substring(0, 30)}"),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                width: MediaQuery.of(context)
+                                                        .size
+                                                        .width *
+                                                    0.2,
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 3,
+                                                              vertical: 1),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.black,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                        border: Border.all(
+                                                            color:
+                                                                Colors.black),
+                                                      ),
+                                                      child: Text(
+                                                        "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)} Min",
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding: const EdgeInsets
+                                                              .symmetric(
+                                                          vertical: 10),
+                                                      child: Container(
+                                                        width: 50,
+                                                        height: 1,
                                                         color: Colors.black,
                                                       ),
                                                     ),
-                                                  ),
-                                                  Padding(
-                                                    padding: const EdgeInsets
-                                                            .symmetric(
-                                                        horizontal: 20),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons
-                                                              .location_on_rounded,
-                                                          color:
-                                                              Colors.red[900],
-                                                        ),
-                                                        SizedBox(
-                                                          width: 10,
-                                                        ),
-                                                        Text(
-                                                            "${Provider.of<DestinationMarkers>(context, listen: false).address.toString().substring(0, 30)}"),
-                                                      ],
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 3,
+                                                              vertical: 1),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.white,
+                                                        border: Border.all(
+                                                            color:
+                                                                Colors.black),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Text(
+                                                          "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} KM"),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                            Container(
-                                              width: 60,
-                                              height: 60,
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                      "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)} Min"),
-                                                  SizedBox(
-                                                    height: 4,
-                                                  ),
-                                                  Text(
-                                                      "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} KM"),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
+                                        SizedBox(
+                                          height: 10,
+                                        ),
+                                        ListTile(
+                                          onTap: () {
+                                            setState(() {
+                                              selectedCar = "Cab-Mini";
+                                              print("Selected cab is Cab-Mini");
+                                            });
+                                          },
+                                          selectedTileColor: Colors.grey,
+                                          leading: Image.asset(
+                                            'asset/images/mini_hatchback.jpg',
+                                            width: 70,
+                                            height: 75,
+                                          ),
+                                          selected: selectedCar == "Cab-Mini"
+                                              ? true
+                                              : false,
+                                          title: Text(
+                                            'Cab-Mini',
+                                            style: TextStyle(
+                                                color: selectedCar == "Cab-Mini"
+                                                    ? Colors.blueGrey[600]
+                                                    : Colors.black),
+                                          ),
+                                          trailing: Container(
+                                            child: Text(
+                                              (Provider.of<DirectionsProvider>(
+                                                                      context,
+                                                                      listen:
+                                                                          false)
+                                                                  .distance! *
+                                                              24 +
+                                                          60)
+                                                      .ceil()
+                                                      .toString() +
+                                                  " \u{20B9}",
+                                              style: TextStyle(
+                                                  color:
+                                                      selectedCar == "Cab-Mini"
+                                                          ? Colors.blueGrey[600]
+                                                          : Colors.black),
+                                            ),
+                                          ),
+                                        ),
+                                        ListTile(
+                                          focusColor: Colors.red,
+                                          selectedTileColor: Colors.grey,
+                                          leading: Image.asset(
+                                            'asset/images/cab_.png',
+                                            width: 70,
+                                            height: 75,
+                                          ),
+                                          title: Text(
+                                            'Cab-UX',
+                                            style: TextStyle(
+                                                color: selectedCar == "Cab-UX"
+                                                    ? Colors.blueGrey[600]
+                                                    : Colors.black),
+                                          ),
+                                          onTap: () {
+                                            setState(() {
+                                              selectedCar = "Cab-UX";
+                                              print("Selected cab is Cab-UX");
+                                            });
+                                          },
+                                          selected: selectedCar == "Cab-UX"
+                                              ? true
+                                              : false,
+                                          trailing: Container(
+                                            child: Text(
+                                              (Provider.of<DirectionsProvider>(
+                                                                      context,
+                                                                      listen:
+                                                                          false)
+                                                                  .distance! *
+                                                              35 +
+                                                          100)
+                                                      .ceil()
+                                                      .toString() +
+                                                  " \u{20B9}",
+                                              style: TextStyle(
+                                                  color: selectedCar == "Cab-UX"
+                                                      ? Colors.blueGrey[600]
+                                                      : Colors.black),
+                                            ),
+                                          ),
+                                        ),
+                                        ListTile(
+                                          focusColor: Colors.blueGrey,
+                                          hoverColor: Colors.blueGrey,
+                                          onTap: () {
+                                            setState(() {
+                                              selectedCar = "Cab-Delux";
+                                              print(
+                                                  "Selected cab is Cab-Delux");
+                                            });
+                                          },
+                                          selected: selectedCar == "Cab-Delux"
+                                              ? true
+                                              : false,
+                                          selectedTileColor: Colors.black,
+                                          tileColor: Colors.white,
+                                          leading: Image.asset(
+                                            'asset/images/cab_delux_icon.png',
+                                            width: 70,
+                                            height: 75,
+                                          ),
+                                          title: Text(
+                                            'Cab-Delux',
+                                            style: TextStyle(
+                                                color:
+                                                    selectedCar == "Cab-Delux"
+                                                        ? Colors.blueGrey[600]
+                                                        : Colors.black),
+                                          ),
+                                          trailing: Container(
+                                            child: Text(
+                                              (Provider.of<DirectionsProvider>(
+                                                                      context,
+                                                                      listen:
+                                                                          false)
+                                                                  .distance! *
+                                                              42 +
+                                                          150)
+                                                      .ceil()
+                                                      .toString() +
+                                                  " \u{20B9}",
+                                              style: TextStyle(
+                                                  color:
+                                                      selectedCar == "Cab-Delux"
+                                                          ? Colors.blueGrey[600]
+                                                          : Colors.black),
+                                            ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              DropdownButton<String>(
+                                                value: selectedPayment,
+                                                icon: Icon(
+                                                  LineIcons.wallet,
+                                                  color: Colors.black,
+                                                ),
+                                                underline: SizedBox(
+                                                  width: 0,
+                                                  height: 1,
+                                                  child: Container(
+                                                      color: Colors.black87),
+                                                ),
+                                                iconSize: 24,
+                                                elevation: 0,
+                                                menuMaxHeight: 120,
+                                                itemHeight: 48,
+                                                style: const TextStyle(
+                                                    color: Colors.black),
+                                                dropdownColor: Colors.grey[100],
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                onChanged: (String? newValue) {
+                                                  setState(() {
+                                                    selectedPayment = newValue!;
+                                                  });
+                                                },
+                                                items: <String>[
+                                                  'Cash',
+                                                  'Razorpay'
+                                                ].map<DropdownMenuItem<String>>(
+                                                    (String value) {
+                                                  return DropdownMenuItem<
+                                                      String>(
+                                                    value: value,
+                                                    child: Container(
+                                                      child: Row(
+                                                        children: [
+                                                          Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                        .only(
+                                                                    bottom: 2),
+                                                            child: Text(''),
+                                                          ),
+                                                          SizedBox(
+                                                            width: 9,
+                                                          ),
+                                                          Image.asset(
+                                                            "asset/images/$value.png",
+                                                            fit: BoxFit.cover,
+                                                          ),
+                                                          value == "Cash"
+                                                              ? Text(
+                                                                  "  \u{20B9}")
+                                                              : Text(
+                                                                  "",
+                                                                ),
+                                                        ],
+                                                      ),
+                                                      width: 80,
+                                                      height: 25,
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
+                                              ElevatedButton.icon(
+                                                onPressed: () async {
+                                                  Position userLoc =
+                                                      await Geolocator
+                                                          .getCurrentPosition(
+                                                              desiredAccuracy:
+                                                                  LocationAccuracy
+                                                                      .high);
+                                                  GeoFirePoint loc = geo.point(
+                                                      latitude:
+                                                          userLoc.latitude,
+                                                      longitude:
+                                                          userLoc.longitude);
+                                                  print(
+                                                      'user location:$userLoc');
+                                                  var collectionReference =
+                                                      _firestore.collection(
+                                                          'Locations');
+                                                  print(
+                                                      'ref:$collectionReference');
+                                                  locationStream = geo
+                                                      .collection(
+                                                          collectionRef:
+                                                              collectionReference)
+                                                      .within(
+                                                          center: loc,
+                                                          radius: 50,
+                                                          field: 'position',
+                                                          strictMode: true);
+                                                  print('loca:$locationStream');
+                                                  subs = locationStream
+                                                      .listen((event) {
+                                                    print("e $event");
+                                                  });
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 8),
+                                                    primary: Colors.black),
+                                                icon: Icon(LineIcons.car),
+                                                label: Text("Search Cab"),
+                                              ),
+                                              IconButton(
+                                                  onPressed: () {
+                                                    subs.cancel();
+                                                    print('stream is cancel');
+                                                  },
+                                                  icon: Icon(LineIcons.stop))
+                                            ],
+                                          ),
+                                        )
                                       ],
                                     ),
                                   )

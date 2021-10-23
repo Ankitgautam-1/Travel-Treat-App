@@ -407,7 +407,7 @@ class _SignUpState extends State<SignUp> {
                         width: 320,
                         child: TextFormField(
                           controller: _email,
-                          validator: (val) => val!.contains('@gmail.com')
+                          validator: (val) => val!.isEmail
                               ? null
                               : "Enter valide email",
                           keyboardType: TextInputType.text,
