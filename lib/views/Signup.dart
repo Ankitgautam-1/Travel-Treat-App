@@ -203,7 +203,6 @@ class _SignUpState extends State<SignUp> {
 
   @override
   Widget build(BuildContext context) {
-    _ph = TextEditingController(text: permission ? _mobileNumber : "");
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -407,9 +406,8 @@ class _SignUpState extends State<SignUp> {
                         width: 320,
                         child: TextFormField(
                           controller: _email,
-                          validator: (val) => val!.isEmail
-                              ? null
-                              : "Enter valide email",
+                          validator: (val) =>
+                              val!.isEmail ? null : "Enter valide email",
                           keyboardType: TextInputType.text,
                           textInputAction: TextInputAction.next,
                           decoration: InputDecoration(
