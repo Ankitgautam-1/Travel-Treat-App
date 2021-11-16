@@ -1,10 +1,12 @@
 import 'dart:io';
+
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:app/Data/DirectionProvider.dart';
 import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/Data/pickuploc.dart';
 import 'package:app/Data/userData.dart';
+import 'package:app/models/pushnotification.dart';
 import 'package:app/models/userAccount.dart';
 import 'package:app/views/Dashboard.dart';
 import 'package:app/views/LocationPermission.dart';
@@ -14,11 +16,13 @@ import 'package:app/views/Welcome.dart';
 import 'package:app/views/introduction_page.dart';
 import 'package:app/views/test.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
+
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Data/accountProvider.dart';
@@ -27,6 +31,7 @@ import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
 bool haspermission = false;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final FirebaseApp app = await Firebase.initializeApp();
@@ -44,6 +49,7 @@ Future<void> main() async {
   );
 
   VisualDensity.adaptivePlatformDensity;
+
   runApp(
     MultiProvider(
       providers: [
@@ -81,6 +87,7 @@ Future<void> main() async {
 
 class MyApp extends StatefulWidget {
   final FirebaseApp app;
+
   MyApp({required this.app});
   @override
   _MyAppState createState() => _MyAppState(app: app);

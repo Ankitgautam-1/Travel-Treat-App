@@ -152,6 +152,7 @@ class _EmailVerifyState extends State<EmailVerify> {
         uploadTask = ref.putFile(prof);
         print('Uploaded image');
         final DatabaseReference db = FirebaseDatabase(app: app).reference();
+
         await db.child('Users').child(uid).set(
           {
             "Username": "$username",

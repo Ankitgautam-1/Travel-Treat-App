@@ -7,7 +7,6 @@ import 'package:get/get.dart';
 import 'package:location_permissions/location_permissions.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
-
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
@@ -24,7 +23,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
   _LocationPermissoinState({required this.app});
   loc.Location location = loc.Location();
   final LocationPermissionLevel _permissionLevel =
-      LocationPermissionLevel.locationWhenInUse;
+      LocationPermissionLevel.locationAlways;
 
   Future<void> requestPermission(
       LocationPermissionLevel permissionLevel) async {
@@ -125,11 +124,13 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
                   await OpenAppsSettings.openAppsSettings(
                       settingsCode: SettingsCode.APP_SETTINGS,
                       onCompletion: () async {
-                        if (await permissions.Permission.locationWhenInUse.isGranted ||
+                        if (await permissions.Permission.locationAlways.isGranted ||
                             await permissions
-                                .Permission.locationWhenInUse.isLimited ||
-                            await permissions.Permission.location.isGranted ||
-                            await permissions.Permission.location.isLimited) {
+                                .Permission.locationAlways.isLimited ||
+                            await permissions
+                                .Permission.locationAlways.isGranted ||
+                            await permissions
+                                .Permission.locationAlways.isLimited) {
                           _checkGps();
                         }
                       });

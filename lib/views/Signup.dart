@@ -111,16 +111,18 @@ class _SignUpState extends State<SignUp> {
       pickType: PickType.image,
       quality: 1,
     );
-    setState(() {
-      if (pickedFile != null) {
-        File _im = File(pickedFile.elementAt(0).path);
-        _image = _im;
-        image = true;
-        print(" image ${_image.toString().trim()}");
-      } else {
-        print('No image selected.');
-      }
-    });
+    setState(
+      () {
+        if (pickedFile != null) {
+          File _im = File(pickedFile.elementAt(0).path);
+          _image = _im;
+          image = true;
+          print(" image ${_image.toString().trim()}");
+        } else {
+          print('No image selected.');
+        }
+      },
+    );
   }
 
   Widget get() {

@@ -33,7 +33,7 @@ class SignIn extends StatefulWidget {
 
 class _SignInState extends State<SignIn> {
   FirebaseApp app;
-  String? username, email, ph, image = "", emph = "";
+  String? username, email, ph, image = "", emph = "", token = "";
   _SignInState({required this.app});
   TextEditingController _email = TextEditingController();
   TextEditingController _pass = TextEditingController();
@@ -70,6 +70,7 @@ class _SignInState extends State<SignIn> {
           ph = result!['Phone'];
           image = result!['Image'];
           emph = result!['emph'];
+          token = result!['token'];
           print("$username ,$email,$image,$ph");
           UserAccount userAccount = UserAccount(
               Email: email!,

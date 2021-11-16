@@ -10,11 +10,11 @@ import 'package:provider/provider.dart';
 class Geocoding {
   final String apikey = "58f6afdd9e6947d1b48437540521dca6";
 
-  Future<dynamic> getAddress(Position position, context) async {
+  Future<dynamic> getAddress(double latitude, double longitude, context) async {
     final String baseurl = "https://api.opencagedata.com/geocode/v1/json?q=" +
-        position.latitude.toString() +
+        latitude.toString() +
         "+" +
-        position.longitude.toString() +
+        longitude.toString() +
         "&key=" +
         apikey;
 

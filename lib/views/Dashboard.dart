@@ -5,6 +5,7 @@ import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/Data/pickuploc.dart';
 import 'package:app/Data/userData.dart';
+import 'package:app/models/pushnotification.dart';
 import 'package:app/models/userAccount.dart';
 import 'package:app/views/Maps.dart';
 import 'package:app/views/Signin.dart';
@@ -12,11 +13,13 @@ import 'package:app/views/Signup.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,10 +36,16 @@ class _DashboardState extends State<Dashboard> {
   int selectedindex = 0;
   PageController _pagecontroller = PageController();
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
+
   void _onpagechanged(int index) {
     setState(() {
       selectedindex = index;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   void _onnavigationmenu(int selectedindex) {
@@ -51,6 +60,7 @@ class _DashboardState extends State<Dashboard> {
     await prefs.remove('Uid');
     await prefs.remove('Image');
     await prefs.remove('emph');
+
     try {
       await GoogleSignIn().signOut();
     } catch (e) {}

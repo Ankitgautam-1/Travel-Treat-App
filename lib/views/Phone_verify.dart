@@ -93,7 +93,9 @@ class _PrcState extends State<Prc> {
     } else {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: _ph,
-        verificationCompleted: (PhoneAuthCredential credential) async {},
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await auth.signInWithCredential(credential);
+        },
         timeout: const Duration(seconds: 100),
         verificationFailed: (FirebaseAuthException e) async {
           if (e.code == 'invalid-phone-number') {
@@ -122,10 +124,16 @@ class _PrcState extends State<Prc> {
               ),
             ),
           );
-          this.verificationId = verificationId;
+          setState(() {
+            this.verificationId = verificationId;
+          });
           print('$verificationId here it\'s');
         },
-        codeAutoRetrievalTimeout: (String verificationId) {},
+        codeAutoRetrievalTimeout: (String verificationId) {
+          setState(() {
+            this.verificationId = verificationId;
+          });
+        },
       );
       print(data[2]);
     }
