@@ -8,6 +8,7 @@ import 'package:app/Data/pickuploc.dart';
 import 'package:app/Data/userData.dart';
 import 'package:app/models/pushnotification.dart';
 import 'package:app/models/userAccount.dart';
+import 'package:app/services/notification_service.dart';
 import 'package:app/views/Dashboard.dart';
 import 'package:app/views/LocationPermission.dart';
 import 'package:app/views/Signin.dart';
@@ -19,6 +20,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
@@ -34,6 +36,7 @@ bool haspermission = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  NotificationServices().init();
   final FirebaseApp app = await Firebase.initializeApp();
 
   print("App:$app");
@@ -49,7 +52,23 @@ Future<void> main() async {
   );
 
   VisualDensity.adaptivePlatformDensity;
-
+  AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails("chnanelId", "channellname",
+          channelDescription:
+              "The Travel Treat app requires notification service to assure user and alert on required time.",
+          importance: Importance.high,
+          priority: Priority.high);
+  NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+  await FlutterLocalNotificationsPlugin()
+      .show(
+          12345,
+          "A Notification From My Application",
+          "This notification was sent using Flutter Local Notifcations Package",
+          platformChannelSpecifics,
+          payload: 'data')
+      .then((value) => print(" print done"))
+      .onError((error, stackTrace) => print("got error"));
   runApp(
     MultiProvider(
       providers: [
