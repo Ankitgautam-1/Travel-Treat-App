@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:app/Data/DirectionProvider.dart';
 import 'package:app/Data/destinationmarkers.dart';
+import 'package:app/Data/driverProvider.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/Data/pickuploc.dart';
 import 'package:app/Data/userData.dart';
@@ -11,12 +12,14 @@ import 'package:app/models/userAccount.dart';
 import 'package:app/services/notification_service.dart';
 import 'package:app/views/Dashboard.dart';
 import 'package:app/views/LocationPermission.dart';
+import 'package:app/views/Maps.dart';
 import 'package:app/views/Signin.dart';
 import 'package:app/views/TrailPage.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:app/views/introduction_page.dart';
 import 'package:app/views/test.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,12 +36,23 @@ import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
 
 bool haspermission = false;
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails("chnanelId", "channellname",
+          channelDescription:
+              "The Travel Treat app requires notification service to assure user and alert on required time.",
+          importance: Importance.high,
+          priority: Priority.high);
+  NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   NotificationServices().init();
   final FirebaseApp app = await Firebase.initializeApp();
-
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   print("App:$app");
   haspermission = await permissions.Permission.locationWhenInUse.isGranted ||
       await permissions.Permission.locationWhenInUse.isLimited ||
@@ -47,7 +61,6 @@ Future<void> main() async {
   SystemChrome.setPreferredOrientations(
     [
       DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
     ],
   );
 
@@ -60,15 +73,20 @@ Future<void> main() async {
           priority: Priority.high);
   NotificationDetails platformChannelSpecifics =
       NotificationDetails(android: androidPlatformChannelSpecifics);
-  await FlutterLocalNotificationsPlugin()
-      .show(
-          12345,
-          "A Notification From My Application",
-          "This notification was sent using Flutter Local Notifcations Package",
-          platformChannelSpecifics,
-          payload: 'data')
-      .then((value) => print(" print done"))
-      .onError((error, stackTrace) => print("got error"));
+
+  FirebaseMessaging.instance.getToken().then((token) => print("token:$token"));
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    print("title :${message.data['title']}");
+
+    print(message.notification);
+    print(message.data);
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails("chnanelId", "channellname",
+            channelDescription:
+                "The Travel Treat app requires notification service to assure user and alert on required time.",
+            importance: Importance.high,
+            priority: Priority.high);
+  });
   runApp(
     MultiProvider(
       providers: [
@@ -90,11 +108,15 @@ Future<void> main() async {
         ChangeNotifierProvider<DirectionsProvider>(
           create: (context) => DirectionsProvider(),
         ),
+        ChangeNotifierProvider<DriverProvider>(
+          create: (context) => DriverProvider(),
+        ),
       ],
       child: GetMaterialApp(
         debugShowCheckedModeBanner: false,
+        title: 'Travel Treat',
         theme: ThemeData(
-          fontFamily: 'Ubuntu',
+          fontFamily: 'OpenSans',
         ),
         home: SafeArea(
           child: MyApp(app: app),
@@ -187,7 +209,7 @@ class _MyAppState extends State<MyApp> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Dashboard(app: app));
+                Get.offAll(Maps(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -196,7 +218,7 @@ class _MyAppState extends State<MyApp> {
         },
       );
     } else {
-      Get.offAll(Dashboard(app: app));
+      Get.offAll(Maps(app: app));
     }
   }
 
@@ -213,7 +235,7 @@ class _MyAppState extends State<MyApp> {
                   app:
                       app) //!!Change here to Welcome after trailpage for sign in is over
           : haspermission && locationService
-              ? Dashboard(app: app)
+              ? Maps(app: app)
               : LocationPermissoin(app: app),
       splashIconSize: 350,
     );

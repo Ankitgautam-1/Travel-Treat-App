@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:app/views/Dashboard.dart';
+import 'package:app/views/Maps.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -262,7 +263,7 @@ class _PrcState extends State<Prc> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Dashboard(app: app));
+                Get.offAll(Maps(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -271,7 +272,7 @@ class _PrcState extends State<Prc> {
         },
       );
     } else {
-      Get.offAll(Dashboard(app: app));
+      Get.offAll(Maps(app: app));
     }
   }
 

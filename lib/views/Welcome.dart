@@ -3,14 +3,18 @@ import 'dart:io';
 import 'package:app/models/userAccount.dart';
 import 'package:app/views/Dashboard.dart' as sign;
 import 'package:app/views/Dashboard.dart';
+import 'package:app/views/Maps.dart';
 import 'package:app/views/TrailPage.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
@@ -176,7 +180,7 @@ class _WelcomeState extends State<Welcome> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Dashboard(app: app));
+                Get.offAll(Maps(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -185,7 +189,7 @@ class _WelcomeState extends State<Welcome> {
         },
       );
     } else {
-      Get.offAll(Dashboard(app: app));
+      Get.offAll(Maps(app: app));
     }
   }
 
@@ -195,123 +199,148 @@ class _WelcomeState extends State<Welcome> {
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(height: 60),
-              Padding(
-                padding: const EdgeInsets.only(left: 5, right: 150),
-                child: Text(
-                  'Welcome to',
-                  style: TextStyle(
-                    fontSize: 32,
+          child: LayoutBuilder(builder: (ctx, constraint) {
+            return Container(
+              child: Column(
+                children: [
+                  SizedBox(height: 60),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5, right: 150),
+                    child: Text(
+                      'Welcome to',
+                      style: TextStyle(
+                        fontSize: 32,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 5, right: 150),
-                child: Text(
-                  'Travel Treat',
-                  style: TextStyle(
-                    fontSize: 32,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5, right: 150),
+                    child: Text(
+                      'Travel Treat',
+                      style: TextStyle(
+                        fontSize: 32,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              SizedBox(height: 30),
-              Image.asset(
-                'asset/images/cab.jpg',
-                width: 360,
-              ),
-              SizedBox(height: 30),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 80),
-                  primary: Colors.black87,
-                  onPrimary: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13.0),
+                  SizedBox(height: 30),
+                  Image.asset(
+                    'asset/images/cab.jpg',
+                    width: 360,
                   ),
-                ),
-                onPressed: () {
-                  Get.to(SignIn(app: app));
-                },
-                child: Text(
-                  ' Sign In ',
-                  style: TextStyle(
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 15,
-              ),
-              isloading
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Container(
-                        height: 20,
-                        width: 20,
-                        child: Center(
-                          child: CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  isloading
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Container(
+                            height: 20,
+                            width: 20,
+                            child: Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          height: 20,
+                        ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      FocusScope.of(context)
+                          .unfocus(); //to hide the keyboard by unfocusing on textformfield
+                      Get.to(SignIn(app: app));
+                    },
+                    child: Text('Sign In',
+                        style: GoogleFonts.ubuntu(
+                            color: Colors.white, fontSize: 16)),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          10,
                         ),
                       ),
-                    )
-                  : SizedBox(
-                      height: 20,
-                    ),
-              Center(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    primary: Colors.black,
-                    shape: StadiumBorder(),
-                    padding: EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-                  ),
-                  label: Text(
-                    'Sign In with Google',
-                    style: TextStyle(fontFamily: 'Ubuntu', fontSize: 17),
-                  ),
-                  icon: Image.asset(
-                    'asset/images/google_logo.png',
-                    width: 35,
-                  ),
-                  onPressed: () async {
-                    signInWithGoogle();
-                  },
-                ),
-              ),
-              SizedBox(
-                height: 10,
-                child: TextButton(
-                  onPressed: () {
-                    Get.to(SignIn(app: app));
-                  },
-                  child: Text("Login"),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Don\'t have an Account ?',
-                    style: TextStyle(
-                      fontSize: 16,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Get.to(SignUp(app: app));
-                    },
-                    child: Text(
-                      ' Sign Up',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.blue,
+                      onPrimary: Colors.white,
+                      primary: Colors.black,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 80,
+                        vertical: 13,
                       ),
                     ),
+                  ),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.01,
+                  ),
+                  SizedBox(
+                    height: 24,
+                    width: double.infinity,
+                    child: Center(
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Container(
+                              height: 1,
+                              width: MediaQuery.of(context).size.width * 0.65,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 50),
+                              child: Text(
+                                ' Or ',
+                                style: TextStyle(backgroundColor: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.01,
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      primary: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    ),
+                    label: Text('Sign in with Google',
+                        style: GoogleFonts.ubuntu(
+                            color: Colors.black, fontSize: 16)),
+                    icon: Image.asset(
+                      'asset/images/google_logo.png',
+                      width: 35,
+                    ),
+                    onPressed: () async {
+                      signInWithGoogle();
+                    },
+                  ),
+                  SizedBox(
+                    height: 40,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Don\'t have an Account ?',
+                          style: GoogleFonts.roboto(
+                              color: Colors.black, fontSize: 16)),
+                      GestureDetector(
+                        onTap: () {
+                          Get.off(SignUp(app: app));
+                        },
+                        child: Text(' Sign Up',
+                            style: GoogleFonts.roboto(
+                                color: Colors.blue, fontSize: 16)),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            );
+          }),
         ),
       ),
     );

@@ -64,7 +64,7 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
           PageViewModel(
             title: "Location Services",
             body:
-                "Travel Treat uses user location to increase the user exprience and the details will be given to diver for better navigation of driver ,user can track there ride at any point of time.",
+                "Travel Treat uses user location to increase the user exprience and the details will be given to diver for better navigation of driver",
             image: _buildImage('3rd_image.png'),
             decoration: pageDecoration,
           ),

@@ -1,4 +1,5 @@
 import 'package:app/views/Dashboard.dart';
+import 'package:app/views/Maps.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +34,11 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
     if (permissionRequestResult == PermissionStatus.denied ||
         permissionRequestResult == PermissionStatus.restricted ||
         permissionRequestResult == PermissionStatus.unknown) {
+      var ans = await LocationPermissions()
+          .requestPermissions(permissionLevel: permissionLevel);
+      if (ans == PermissionStatus.granted) {
+        _checkGps();
+      }
     } else {
       _checkGps();
     }
@@ -51,7 +57,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Dashboard(app: app));
+                Get.offAll(Maps(app: app));
               } else {
                 Get.snackbar(
                   "Location Permission ",
@@ -64,7 +70,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
         },
       );
     } else {
-      Get.offAll(Dashboard(app: app));
+      Get.offAll(Maps(app: app));
     }
   }
 

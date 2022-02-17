@@ -1,16 +1,29 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
+import 'dart:math';
+import 'package:animations/animations.dart';
 import 'package:app/Data/DirectionProvider.dart';
+import 'package:app/Data/driverProvider.dart';
 
 import 'package:app/Data/pickuploc.dart';
 import 'package:app/Utils/Utils.dart';
+import 'package:app/models/driver.dart';
 import 'package:app/models/driverDetails.dart';
 import 'package:app/services/getDirections.dart';
+import 'package:app/services/sending_notification.dart';
+import 'package:app/views/accounts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:circular_profile_avatar/circular_profile_avatar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geoflutterfire/geoflutterfire.dart';
 import 'package:get/get.dart';
@@ -27,6 +40,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:app/services/assistantmethod.dart';
 import 'package:app/views/Welcome.dart';
 import 'package:app/views/searchplace.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:line_icons/line_icon.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:location/location.dart' as loc;
@@ -34,6 +48,8 @@ import 'package:map_picker/map_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:slide_to_act/slide_to_act.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Maps extends StatefulWidget {
   final FirebaseApp app;
@@ -45,6 +61,7 @@ class Maps extends StatefulWidget {
 class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
   FirebaseApp app;
   final geo = Geoflutterfire();
   late Stream<List<DocumentSnapshot>> locationStream;
@@ -76,6 +93,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   StreamSubscription<Position>? getloc;
   bool loadingplace = false;
   var geoLocator = Geolocator();
+  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
+
   List<LatLng>? poly = [];
   Set<Polyline> _polylines = {};
   late Position position;
@@ -85,10 +104,111 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   bool ismapcontrollercreated = false;
   MapPickerController mapPickerController = MapPickerController();
   bool usingmappin = false;
+  bool trip_details = false;
+  String pickup_lat = "";
+  String pickup_long = "";
+  String destination_lat = "";
+  String destination_long = "";
+  late Stream timer_stream;
+  late StreamSubscription<dynamic> drivers_positions_stream;
+  late LatLng pickup;
+  Future<void> setupnotification() async {
+    print("in setup notification");
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print("getting data ");
+      print(message.notification);
+      print(message.data);
+      AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails("chnanelId", "channellname",
+              channelDescription:
+                  "The Travel Treat app requires notification service to assure user and alert on required time.",
+              importance: Importance.high,
+              priority: Priority.high);
+      NotificationDetails platformChannelSpecifics =
+          NotificationDetails(android: androidPlatformChannelSpecifics);
+      if (message.data["type"] == "Ride Cancel") {
+        print("Ride cancel ${message.data} ");
+        while (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop('dialog');
+        }
+      } else if (message.data["type"] == "Ride Accept") {
+        setState(() {
+          while (Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop('dialog');
+          }
+          trip_details = true;
+
+          placeMarker.add(Marker(
+              markerId: MarkerId("Driver_location"),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueMagenta),
+              infoWindow: InfoWindow(title: "Drivers Loc"),
+              position: LatLng(double.tryParse(message.data["lat"])!,
+                  double.tryParse(message.data["long"])!)));
+        });
+        print("lat driver${message.data["lat"]}");
+        String ttr = "";
+        if ((int.tryParse(message.data["time"]))! / 60 < 1) {
+          ttr = "1";
+        } else {
+          ttr = ((int.tryParse(message.data["time"]))! / 60).ceil().toString();
+        }
+        Driver driver = Driver(
+            uid: message.data["uid"],
+            username: message.data["username"],
+            imageurl: message.data["imageurl"],
+            timetoreach: ttr,
+            phone: message.data["phone"],
+            cabimage: message.data["cab_image"],
+            cab_model: message.data["cab_model"],
+            cab_number: message.data["cab_number"],
+            rating: message.data["rating"]);
+
+        print(
+            "driverDetails ${driver.username} ${driver.imageurl} ${driver.phone}");
+        Provider.of<DriverProvider>(context, listen: false)
+            .updateDriver(driver);
+
+        Get.snackbar("Got The Ride", "The driver we be avaible soon",
+            duration: Duration(seconds: 4));
+
+        while (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop('dialog');
+        }
+        FirebaseFirestore.instance
+            .collection('Test_Loc')
+            .doc(message.data["uid"])
+            .snapshots()
+            .listen((event) {
+          GeoPoint geoPoint = event.data()!["position"]["geopoint"];
+          setState(() {
+            placeMarker.removeWhere((element) {
+              return element.markerId.value == "Driver_location";
+            });
+            placeMarker.add(Marker(
+                markerId: MarkerId("Driver_location"),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueMagenta),
+                infoWindow: InfoWindow(title: "Drivers Loc"),
+                position: LatLng(geoPoint.latitude, geoPoint.longitude)));
+          });
+          print("geoPoint lat ${geoPoint.latitude}");
+          print("geoPoint long ${geoPoint.longitude}");
+        });
+      } else {
+        // Navigator.of(context).pop(true);
+        await FlutterLocalNotificationsPlugin()
+            .show(12345, "${message.category}", "${message.data["type"]}",
+                platformChannelSpecifics,
+                payload: 'sending from user')
+            .then((value) => print(" print done"))
+            .onError((error, stackTrace) => print("got error"));
+      }
+    });
+  }
+
   void track() async {
-    positionStream =
-        Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.high)
-            .listen(
+    positionStream = Geolocator.getPositionStream().listen(
       (Position position) {
         LatLng latLngPosition = LatLng(position.latitude, position.longitude);
         CameraPosition cameraPosition =
@@ -128,11 +248,12 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
             .updatePickupMarkers(null, null);
       }
       curloc = LatLng(res.lat, res.lng);
+
       setState(() {
         loadingplace = false;
         placeMarker = [];
         placeMarker.add(Marker(
-            markerId: MarkerId(curloc.toString()),
+            markerId: MarkerId("Current_location_user"),
             infoWindow: InfoWindow(title: res.placeAddres),
             position: curloc!));
       });
@@ -177,7 +298,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
         loadingplace = false;
         placeMarker = [];
         placeMarker.add(Marker(
-            markerId: MarkerId(curloc.toString()),
+            markerId: MarkerId("Current_location_user"),
             infoWindow: InfoWindow(title: res.placeAddres),
             position: curloc));
 
@@ -209,7 +330,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     await prefs.remove('Email');
     await prefs.remove('Ph');
     await prefs.remove('Uid');
-    await prefs.remove('Image');
+    try {
+      await prefs.remove('Image');
+    } catch (e) {}
     try {
       await GoogleSignIn().signOut();
     } catch (e) {}
@@ -234,6 +357,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
 
   @override
   void initState() {
+    setupnotification();
     getData();
     super.initState();
   }
@@ -257,7 +381,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     if (getloc != null) {
       getloc!.cancel();
     }
-    var collectionReference = _firestore.collection('Locations');
+    var collectionReference = _firestore.collection('Test_Loc');
     var geoRef = geo.collection(collectionRef: collectionReference);
     Userloc = Geolocator.getPositionStream();
     GeoFirePoint current =
@@ -268,14 +392,23 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
 
     subs = data.listen(
       (queryLoc) {
+        l1 = [];
         print('querylocation ${queryLoc})}');
         print('length:${queryLoc.length}');
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < queryLoc.length; i++) {
           bool a = queryLoc.elementAt(i).data()!["driverDetails"] != null;
           if (a) {
+            String driversuid = queryLoc.elementAt(i).data()!["uid"];
+            String token = queryLoc.elementAt(i).data()!["token"];
             Map t1 = queryLoc.elementAt(i).data()!["driverDetails"];
-            List temp_list = [t1['imageurl'], t1['username'], t1['rating']];
+            List temp_list = [
+              t1['imageurl'],
+              t1['username'],
+              t1['rating'],
+              token,
+              driversuid
+            ];
             l1.add(temp_list);
             print('elementAt:${t1}');
           }
@@ -283,11 +416,10 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
         print("l1 data:${l1}");
 
         print("length of the t1:${t1.length}");
-        if (queryLoc.length > 0) {
-          setState(() {
-            driver_details = true;
-          });
-        }
+        setState(() {
+          driver_details = true;
+        });
+
         // subs.cancel();
       },
       onDone: () {
@@ -317,6 +449,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
         : LatLng(
             Provider.of<UserData>(context, listen: false).pickuplocation!.lat,
             Provider.of<UserData>(context, listen: false).pickuplocation!.lng);
+    pickup_lat = pickup.latitude.toString();
+    pickup_long = pickup.longitude.toString();
     String pickupaddress =
         Provider.of<PickupMarkers>(context, listen: false).places != null
             ? Provider.of<PickupMarkers>(context, listen: false).address
@@ -326,14 +460,16 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
 
     LatLng destination =
         Provider.of<DestinationMarkers>(context, listen: false).places;
+    destination_lat = destination.latitude.toString();
+    destination_long = destination.longitude.toString();
     String destinationaddress =
         Provider.of<DestinationMarkers>(context, listen: false).address;
     setState(() {
       placeMarker = [];
       placeMarker.add(
         Marker(
-          markerId: MarkerId(pickup.toString()),
-          infoWindow: InfoWindow(title: pickupaddress),
+          markerId: MarkerId("Pick_up"),
+          infoWindow: InfoWindow(title: "Pick up place"),
           position: pickup,
           icon:
               BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
@@ -341,7 +477,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
       );
       placeMarker.add(
         Marker(
-          markerId: MarkerId(destination.toString()),
+          markerId: MarkerId("Destination"),
           infoWindow: InfoWindow(title: destinationaddress),
           position: destination,
         ),
@@ -354,42 +490,105 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
         context: context);
     try {
       poly = await directions.getDirections();
+      print("polyline direction:${poly}");
+
       print("poly:$poly");
-      if (await directions.getDirections() == null) {}
-      print("the value is poly:$poly ");
+      if (poly != null) {
+        setState(() {
+          cab_details = true;
+          _polylines = {
+            Polyline(
+                width: 3,
+                polylineId: PolylineId("Travel_path"),
+                color: Colors.black,
+                jointType: JointType.bevel,
+                points: Provider.of<DirectionsProvider>(context, listen: false)
+                    .cordinates_collections!)
+          };
+
+          // CameraPosition
+          CameraPosition cameraPosition =
+              CameraPosition(target: pickup, zoom: 18);
+          newmapcontroller.animateCamera(
+            CameraUpdate.newLatLngBounds(
+                Provider.of<DirectionsProvider>(context, listen: false).bounds!,
+                65.0),
+          );
+        });
+      } else {
+        setState(() {
+          cab_details = false;
+          _polylines = {};
+          Provider.of<DestinationMarkers>(context, listen: false)
+              .updateDestinationMarkers(null, null);
+          print("place marker ${placeMarker}");
+          placeMarker.removeWhere(
+              (element) => element.markerId.value == "Destination");
+          CameraPosition cameraPosition =
+              CameraPosition(target: pickup, zoom: 18);
+          newmapcontroller
+              .animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
+          showDialog(
+              context: context,
+              barrierDismissible: false,
+              useSafeArea: true,
+              builder: (builder) {
+                return CupertinoAlertDialog(
+                  title: Text(
+                    "Location Error",
+                    style: GoogleFonts.montserrat(
+                        fontSize: 20, fontWeight: FontWeight.w400),
+                  ),
+                  content: Container(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Image.asset(
+                            "asset/images/Location_error.png",
+                            height: 100,
+                            width: 100,
+                          ),
+                          Text(
+                            "Please try valid location",
+                            style: GoogleFonts.montserrat(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton.icon(
+                      icon: Icon(Icons.close),
+                      label: Text("Close"),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    )
+                  ],
+                );
+              });
+          // CameraPosition
+        });
+      }
     } catch (e) {
       print("errors $e");
     }
-    setState(() {
-      cab_details = true;
-      _polylines = {
-        Polyline(
-            width: 3,
-            polylineId: PolylineId("1"),
-            color: Colors.black,
-            jointType: JointType.bevel,
-            points: Provider.of<DirectionsProvider>(context, listen: false)
-                .cordinates_collections!)
-      };
-
-      // CameraPosition
-      CameraPosition cameraPosition = CameraPosition(target: pickup, zoom: 18);
-      newmapcontroller.animateCamera(
-        CameraUpdate.newLatLngBounds(
-            Provider.of<DirectionsProvider>(context, listen: false).bounds!,
-            65.0),
-      );
-    });
   }
 
   Future<void> case1() async {
     print("CASE -1 HERE");
-    LatLng pickup = Provider.of<PickupMarkers>(context, listen: false).places !=
-            null
+    pickup = Provider.of<PickupMarkers>(context, listen: false).places != null
         ? Provider.of<PickupMarkers>(context, listen: false).places
         : LatLng(
             Provider.of<UserData>(context, listen: false).pickuplocation!.lat,
             Provider.of<UserData>(context, listen: false).pickuplocation!.lng);
+    pickup_lat = pickup.latitude.toString();
+    pickup_long = pickup.longitude.toString();
     String pickupaddress =
         Provider.of<PickupMarkers>(context, listen: false).places != null
             ? Provider.of<PickupMarkers>(context, listen: false).address
@@ -401,12 +600,14 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
         Provider.of<DestinationMarkers>(context, listen: false).places;
     String destinationaddress =
         Provider.of<DestinationMarkers>(context, listen: false).address;
+    destination_lat = destination.latitude.toString();
+    destination_long = destination.longitude.toString();
     setState(() {
       placeMarker = [];
       placeMarker.add(
         Marker(
-          markerId: MarkerId(pickup.toString()),
-          infoWindow: InfoWindow(title: pickupaddress),
+          markerId: MarkerId("Pick_up"),
+          infoWindow: InfoWindow(title: "Pick up place"),
           position: pickup,
           icon:
               BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
@@ -414,7 +615,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
       );
       placeMarker.add(
         Marker(
-          markerId: MarkerId(destination.toString()),
+          markerId: MarkerId("Destination"),
           infoWindow: InfoWindow(title: destinationaddress),
           position: destination,
         ),
@@ -428,31 +629,171 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     try {
       poly = await directions.getDirections();
       print("poly:$poly");
-      if (await directions.getDirections() == null) {}
-      print("the value is poly:$poly ");
+      if (poly != null) {
+        setState(() {
+          cab_details = true;
+          _polylines = {
+            Polyline(
+                width: 3,
+                polylineId: PolylineId("Travel_path"),
+                color: Colors.black,
+                jointType: JointType.bevel,
+                points: Provider.of<DirectionsProvider>(context, listen: false)
+                    .cordinates_collections!)
+          };
+
+          // CameraPosition
+          CameraPosition cameraPosition =
+              CameraPosition(target: pickup, zoom: 18);
+          newmapcontroller.animateCamera(
+            CameraUpdate.newLatLngBounds(
+                Provider.of<DirectionsProvider>(context, listen: false).bounds!,
+                65.0),
+          );
+        });
+      } else {
+        setState(() {
+          cab_details = false;
+          _polylines = {};
+          Provider.of<DestinationMarkers>(context, listen: false)
+              .updateDestinationMarkers(null, null);
+          print("place marker ${placeMarker}");
+          placeMarker.removeWhere(
+              (element) => element.markerId.value == "Destination");
+          CameraPosition cameraPosition =
+              CameraPosition(target: pickup, zoom: 18);
+          newmapcontroller
+              .animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
+          showDialog(
+              context: context,
+              barrierDismissible: false,
+              useSafeArea: true,
+              builder: (builder) {
+                return CupertinoAlertDialog(
+                  title: Text(
+                    "Location Error",
+                    style: GoogleFonts.montserrat(
+                        fontSize: 20, fontWeight: FontWeight.w400),
+                  ),
+                  content: Container(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Image.asset(
+                            "asset/images/Location_error.png",
+                            height: 100,
+                            width: 100,
+                          ),
+                          Text(
+                            "Please try valid location",
+                            style: GoogleFonts.montserrat(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton.icon(
+                      icon: Icon(Icons.close),
+                      label: Text("Close"),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    )
+                  ],
+                );
+              });
+
+          // CameraPosition
+        });
+      }
     } catch (e) {
       print("errors $e");
     }
-    setState(() {
-      cab_details = true;
-      _polylines = {
-        Polyline(
-            width: 3,
-            polylineId: PolylineId("1"),
-            color: Colors.black,
-            jointType: JointType.bevel,
-            points: Provider.of<DirectionsProvider>(context, listen: false)
-                .cordinates_collections!)
-      };
+  }
 
-      // CameraPosition
-      CameraPosition cameraPosition = CameraPosition(target: pickup, zoom: 18);
-      newmapcontroller.animateCamera(
-        CameraUpdate.newLatLngBounds(
-            Provider.of<DirectionsProvider>(context, listen: false).bounds!,
-            65.0),
-      );
-    });
+  Widget profile() {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.96,
+      color: Colors.white,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            color: Color.fromRGBO(30, 30, 30, 1),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 20,
+                ),
+                Hero(
+                  tag: "profile",
+                  child: Center(
+                      child: CircularProfileAvatar(
+                    '''https://ugxqtrototfqtawjhnol.supabase.in/storage/v1/object/public/travel-treat-storage/Users/${Provider.of<AccountProvider>(context, listen: false).userAccount.Uid}/${Provider.of<AccountProvider>(context, listen: false).userAccount.Uid}''',
+                    imageFit: BoxFit.cover,
+                    radius: 65,
+                    cacheImage: true,
+                    initialsText: Text(
+                        Provider.of<AccountProvider>(context, listen: false)
+                            .userAccount
+                            .Username
+                            .substring(0, 1)),
+                    onTap: () {
+                      Get.to(Accounts());
+                    },
+                  )),
+                ),
+                SizedBox(
+                  height: 35,
+                ),
+                Text(
+                  Provider.of<AccountProvider>(context, listen: false)
+                      .userAccount
+                      .Username,
+                  style: GoogleFonts.openSans(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.white),
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                Text(
+                  Provider.of<AccountProvider>(context, listen: false)
+                      .userAccount
+                      .Email,
+                  style:
+                      GoogleFonts.openSans(fontSize: 13, color: Colors.white),
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.logout_rounded,
+              color: Colors.black,
+            ),
+            title: Text(
+              'Log Out',
+              style: GoogleFonts.openSans(fontSize: 15, color: Colors.black),
+            ),
+            selected: false,
+            onTap: () {
+              logoutgoogleuser();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   CameraPosition cameraPosition = const CameraPosition(
@@ -466,9 +807,20 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     print('rebuilding the widget');
     return SafeArea(
       child: Scaffold(
+        key: _scaffoldKey,
+        drawer: Drawer(
+          elevation: 1,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                profile(),
+              ],
+            ),
+          ),
+        ),
         body: SingleChildScrollView(
           child: Container(
-            height: MediaQuery.of(context).size.height * 0.879,
+            height: MediaQuery.of(context).size.height * 0.955,
             width: MediaQuery.of(context).size.width,
             child: Stack(
               children: [
@@ -479,7 +831,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                         Visibility(
                           visible: usingmappin,
                           child: Container(
-                            height: MediaQuery.of(context).size.height * 0.80,
+                            height: MediaQuery.of(context).size.height * 0.83,
                             child: Stack(
                               children: [
                                 MapPicker(
@@ -573,7 +925,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                         Visibility(
                           visible: !usingmappin,
                           child: Container(
-                            height: MediaQuery.of(context).size.height * 0.80,
+                            height: MediaQuery.of(context).size.height * 0.83,
                             child: GoogleMap(
                               mapType: MapType.normal,
                               indoorViewEnabled: false,
@@ -617,7 +969,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                         ),
                       ],
                     )),
-                cab_details
+                cab_details && !trip_details
                     ? Padding(
                         padding: const EdgeInsets.only(top: 90, left: 20),
                         child: Container(
@@ -636,6 +988,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                               }
                               setState(
                                 () {
+                                  trip_details = false;
                                   cab_details = false;
                                   Provider.of<DestinationMarkers>(context,
                                           listen: false)
@@ -722,10 +1075,34 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                             )
                                           ],
                                         ),
-                                        child: InkWell(
-                                          onTap: () {
-                                            Get.to(
-                                              SearchPlace(
+                                        child: OpenContainer(
+                                            middleColor: Colors.white,
+                                            transitionType:
+                                                ContainerTransitionType.fade,
+                                            transitionDuration:
+                                                Duration(milliseconds: 600),
+                                            closedBuilder: (context, action) {
+                                              return Row(
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 9),
+                                                    child: Icon(Icons.search,
+                                                        color: Colors.blueGrey),
+                                                  ),
+                                                  SizedBox(
+                                                    width: 10.0,
+                                                  ),
+                                                  Text(
+                                                      'Search location / destination',
+                                                      style: GoogleFonts
+                                                          .openSans()),
+                                                ],
+                                              );
+                                            },
+                                            openBuilder: (context, action) {
+                                              return SearchPlace(
                                                 app: app,
                                                 onPlaceSelect: () async {
                                                   setState(() {
@@ -748,7 +1125,6 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                   listen: false)
                                                               .pickuplocation !=
                                                           null) {
-                                                    print("CASE -1");
                                                     await case1();
                                                   } else if (Provider.of<
                                                                       DestinationMarkers>(
@@ -761,7 +1137,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                   listen: false)
                                                               .places !=
                                                           null) {
-                                                    print("CASE -2");
+                                                    printInfo(info: "CASE -2");
                                                     LatLng pickup = Provider.of<
                                                                 PickupMarkers>(
                                                             context,
@@ -781,8 +1157,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                 .address;
                                                         placeMarker.add(Marker(
                                                             markerId: MarkerId(
-                                                                pickup
-                                                                    .toString()),
+                                                                "Pick_up"),
                                                             infoWindow: InfoWindow(
                                                                 title: pickupaddres
                                                                     .toString()),
@@ -811,7 +1186,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                   listen: false)
                                                               .places !=
                                                           null) {
-                                                    print("CASE -3");
+                                                    printInfo(info: "CASE -3");
                                                     LatLng destination = Provider
                                                             .of<DestinationMarkers>(
                                                                 context,
@@ -832,8 +1207,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                 .address;
                                                         placeMarker.add(Marker(
                                                             markerId: MarkerId(
-                                                                destination
-                                                                    .toString()),
+                                                                "Destination"),
                                                             infoWindow: InfoWindow(
                                                                 title:
                                                                     destinationaddres),
@@ -868,25 +1242,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                         "NO PLACE IS SELECTED ");
                                                   }
                                                 },
-                                              ),
-                                            );
-                                          },
-                                          child: Row(
-                                            children: [
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 9),
-                                                child: Icon(Icons.search,
-                                                    color: Colors.blueGrey),
-                                              ),
-                                              SizedBox(
-                                                width: 10.0,
-                                              ),
-                                              Text(
-                                                  'Search location / destination'),
-                                            ],
-                                          ),
-                                        ),
+                                              );
+                                            }),
                                       ),
                                       SizedBox(
                                         height: 24.0,
@@ -945,7 +1302,13 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                       .pickuplocation!
                                                                       .placeAddres,
                                                               softWrap: true,
-                                                            ),
+                                                              style: GoogleFonts.openSans(
+                                                                  fontSize: 13,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Colors
+                                                                      .black)),
                                                     ),
                                                     IconButton(
                                                       onPressed: () {
@@ -964,10 +1327,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                               ),
                                               Text(
                                                 "Your current address (estimated)",
-                                                style: TextStyle(
-                                                  color: Colors.grey[800],
-                                                  fontSize: 12.0,
-                                                ),
+                                                style: GoogleFonts.openSans(
+                                                    fontSize: 12,
+                                                    color: Colors.black54),
                                               ),
                                             ],
                                           )
@@ -1007,14 +1369,21 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
                                                   children: [
-                                                    Text('Add home'),
+                                                    Text('Add home',
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                fontSize: 13)),
                                                     SizedBox(
                                                       height: 4.0,
                                                     ),
                                                     Text(
                                                       "Add your home location",
-                                                      style: TextStyle(
-                                                        color: Colors.grey[800],
+                                                      style:
+                                                          GoogleFonts.openSans(
+                                                        color: Colors.black54,
                                                         fontSize: 12.0,
                                                       ),
                                                     ),
@@ -1033,9 +1402,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                       Material(
                                         color: Colors.white,
                                         child: InkWell(
-                                          onTap: () {
-                                            print('add work');
-                                          },
+                                          onTap: () async {},
                                           borderRadius:
                                               BorderRadius.circular(10),
                                           child: Padding(
@@ -1056,13 +1423,22 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
                                                   children: [
-                                                    Text('Add Work location'),
+                                                    Text(
+                                                      'Add Work location',
+                                                      style:
+                                                          GoogleFonts.openSans(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize: 13),
+                                                    ),
                                                     SizedBox(
                                                       height: 4.0,
                                                     ),
                                                     Text(
                                                       "Your office location",
-                                                      style: TextStyle(
+                                                      style:
+                                                          GoogleFonts.openSans(
                                                         color: Colors.grey[800],
                                                         fontSize: 12.0,
                                                       ),
@@ -1107,13 +1483,20 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
                                                   children: [
-                                                    Text('Pin location'),
+                                                    Text('Pin location',
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                fontSize: 13)),
                                                     SizedBox(
                                                       height: 4.0,
                                                     ),
                                                     Text(
                                                       "Use location pin",
-                                                      style: TextStyle(
+                                                      style:
+                                                          GoogleFonts.openSans(
                                                         color: Colors.grey[800],
                                                         fontSize: 12.0,
                                                       ),
@@ -1178,12 +1561,38 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                 )
                                               ],
                                             ),
-                                            child: InkWell(
-                                              focusColor: Color.fromRGBO(
-                                                  146, 182, 240, 1),
-                                              onTap: () {
-                                                Get.to(
-                                                  SearchPlace(
+                                            child: OpenContainer(
+                                                middleColor: Colors.white,
+                                                transitionType:
+                                                    ContainerTransitionType
+                                                        .fade,
+                                                transitionDuration:
+                                                    Duration(milliseconds: 600),
+                                                closedBuilder:
+                                                    (context, action) {
+                                                  return Row(
+                                                    children: [
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .only(left: 9),
+                                                        child: Icon(
+                                                            Icons.search,
+                                                            color: Colors
+                                                                .blueGrey),
+                                                      ),
+                                                      SizedBox(
+                                                        width: 10.0,
+                                                      ),
+                                                      Text(
+                                                          'Search location / destination',
+                                                          style: GoogleFonts
+                                                              .openSans()),
+                                                    ],
+                                                  );
+                                                },
+                                                openBuilder: (context, action) {
+                                                  return SearchPlace(
                                                     app: app,
                                                     onPlaceSelect: () async {
                                                       setState(() {
@@ -1244,8 +1653,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                     .address;
                                                             placeMarker.add(Marker(
                                                                 markerId: MarkerId(
-                                                                    pickup
-                                                                        .toString()),
+                                                                    "Pick_up"),
                                                                 infoWindow: InfoWindow(
                                                                     title: pickupaddres
                                                                         .toString()),
@@ -1301,8 +1709,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                     .address;
                                                             placeMarker.add(Marker(
                                                                 markerId: MarkerId(
-                                                                    destination
-                                                                        .toString()),
+                                                                    "Destination"),
                                                                 infoWindow:
                                                                     InfoWindow(
                                                                         title:
@@ -1340,26 +1747,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                             "NO PLACE IS SELECTED ");
                                                       }
                                                     },
-                                                  ),
-                                                );
-                                              },
-                                              child: Row(
-                                                children: [
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            left: 9),
-                                                    child: Icon(Icons.search,
-                                                        color: Colors.blueGrey),
-                                                  ),
-                                                  SizedBox(
-                                                    width: 10.0,
-                                                  ),
-                                                  Text(
-                                                      'Search location / destination'),
-                                                ],
-                                              ),
-                                            ),
+                                                  );
+                                                }),
                                           ),
                                           SizedBox(
                                             height: 20,
@@ -1393,7 +1782,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                               width: 10,
                                                             ),
                                                             Text(
-                                                                "${Provider.of<PickupMarkers>(context, listen: false).places == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres.toString().substring(0, 31) : Provider.of<PickupMarkers>(context, listen: false).address.toString().substring(0, 31)}"),
+                                                                "${Provider.of<PickupMarkers>(context, listen: false).places == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres.toString().substring(0, 26) : Provider.of<PickupMarkers>(context, listen: false).address.toString().substring(0, 26)}",
+                                                                style: GoogleFonts
+                                                                    .openSans()),
                                                           ],
                                                         ),
                                                       ),
@@ -1428,7 +1819,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                               width: 10,
                                                             ),
                                                             Text(
-                                                                "${Provider.of<DestinationMarkers>(context, listen: false).address.toString().substring(0, 30)}"),
+                                                                "${Provider.of<DestinationMarkers>(context, listen: false).address.toString().length > 26 ? "${Provider.of<DestinationMarkers>(context, listen: false).address.toString().substring(0, 26)}" + "..." : "${Provider.of<DestinationMarkers>(context, listen: false).address.toString()}"} ",
+                                                                style: GoogleFonts
+                                                                    .openSans()),
                                                           ],
                                                         ),
                                                       ),
@@ -1465,9 +1858,10 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                         ),
                                                         child: Text(
                                                           "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)} Min",
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.white),
+                                                          style: GoogleFonts
+                                                              .openSans(
+                                                                  color: Colors
+                                                                      .white),
                                                         ),
                                                       ),
                                                       Padding(
@@ -1497,7 +1891,10 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                   .circular(5),
                                                         ),
                                                         child: Text(
-                                                            "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} KM"),
+                                                          "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} KM",
+                                                          style: GoogleFonts
+                                                              .openSans(),
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
@@ -1527,7 +1924,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                 : false,
                                             title: Text(
                                               'Cab-Mini',
-                                              style: TextStyle(
+                                              style: GoogleFonts.openSans(
                                                   color:
                                                       selectedCar == "Cab-Mini"
                                                           ? Colors.blueGrey[600]
@@ -1545,7 +1942,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                         .ceil()
                                                         .toString() +
                                                     " \u{20B9}",
-                                                style: TextStyle(
+                                                style: GoogleFonts.openSans(
                                                     color: selectedCar ==
                                                             "Cab-Mini"
                                                         ? Colors.blueGrey[600]
@@ -1563,7 +1960,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                             ),
                                             title: Text(
                                               'Cab-UX',
-                                              style: TextStyle(
+                                              style: GoogleFonts.openSans(
                                                   color: selectedCar == "Cab-UX"
                                                       ? Colors.blueGrey[600]
                                                       : Colors.black),
@@ -1589,7 +1986,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                         .ceil()
                                                         .toString() +
                                                     " \u{20B9}",
-                                                style: TextStyle(
+                                                style: GoogleFonts.openSans(
                                                     color: selectedCar ==
                                                             "Cab-UX"
                                                         ? Colors.blueGrey[600]
@@ -1619,7 +2016,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                             ),
                                             title: Text(
                                               'Cab-Delux',
-                                              style: TextStyle(
+                                              style: GoogleFonts.openSans(
+                                                  fontWeight: FontWeight.w500,
                                                   color:
                                                       selectedCar == "Cab-Delux"
                                                           ? Colors.blueGrey[600]
@@ -1637,7 +2035,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                         .ceil()
                                                         .toString() +
                                                     " \u{20B9}",
-                                                style: TextStyle(
+                                                style: GoogleFonts.openSans(
                                                     color: selectedCar ==
                                                             "Cab-Delux"
                                                         ? Colors.blueGrey[600]
@@ -1739,7 +2137,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                           primary:
                                                               Colors.black),
                                                   icon: Icon(LineIcons.car),
-                                                  label: Text("Search Cab"),
+                                                  label: Text("Search Cab",
+                                                      style: GoogleFonts
+                                                          .openSans()),
                                                 ),
                                               ],
                                             ),
@@ -1750,263 +2150,786 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                   ],
                                 ),
                               )
-                            : Container(
-                                height: 250.0,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(18.0),
-                                    topRight: Radius.circular(18.0),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color.fromRGBO(0, 0, 0, 0.3),
-                                      blurRadius: 16.5,
-                                      spreadRadius: 0.5,
-                                      offset: Offset(0.7, 0.7),
-                                    )
-                                  ],
-                                ),
-                                child: ListView(
-                                  controller: scrollController,
-                                  children: [
-                                    Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.horizontal_rule_rounded,
-                                            size: 32,
+                            : !trip_details
+                                ? Container(
+                                    height: 250.0,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(18.0),
+                                        topRight: Radius.circular(18.0),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Color.fromRGBO(0, 0, 0, 0.3),
+                                          blurRadius: 16.5,
+                                          spreadRadius: 0.5,
+                                          offset: Offset(0.7, 0.7),
+                                        )
+                                      ],
+                                    ),
+                                    child: ListView(
+                                      controller: scrollController,
+                                      children: [
+                                        Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.horizontal_rule_rounded,
+                                                size: 32,
+                                              ),
+                                              SizedBox(
+                                                height: 20,
+                                              ),
+                                              Container(
+                                                height: 280,
+                                                width: MediaQuery.of(context)
+                                                        .size
+                                                        .width *
+                                                    0.9,
+                                                alignment: Alignment.center,
+                                                child: l1.length == 0
+                                                    ? Column(
+                                                        children: [
+                                                          Text(
+                                                              "No Driver been found"),
+                                                          ElevatedButton(
+                                                            onPressed:
+                                                                getDriverDeatials,
+                                                            child: Text(
+                                                                "Search Again"),
+                                                          )
+                                                        ],
+                                                      )
+                                                    : ListView.builder(
+                                                        itemCount: l1.length,
+                                                        itemBuilder:
+                                                            (BuildContext
+                                                                    context,
+                                                                int index) {
+                                                          if (l1.length == 0) {
+                                                            return Center(
+                                                              child: Text(
+                                                                  "No Drivers found near by",
+                                                                  style: GoogleFonts.ubuntu(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600)),
+                                                            );
+                                                          } else {
+                                                            return Material(
+                                                              color:
+                                                                  Colors.white,
+                                                              child: InkWell(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            10),
+                                                                splashColor:
+                                                                    Colors.blueGrey[
+                                                                        100],
+                                                                onTap:
+                                                                    () async {
+                                                                  String?
+                                                                      usertoken =
+                                                                      await FirebaseMessaging
+                                                                          .instance
+                                                                          .getToken();
+                                                                  String pickup = Provider.of<PickupMarkers>(context, listen: false)
+                                                                              .places ==
+                                                                          null
+                                                                      ? Provider.of<UserData>(
+                                                                              context,
+                                                                              listen:
+                                                                                  false)
+                                                                          .pickuplocation!
+                                                                          .placeAddres
+                                                                          .toString()
+                                                                          .substring(
+                                                                              0,
+                                                                              26)
+                                                                      : Provider.of<PickupMarkers>(
+                                                                              context,
+                                                                              listen:
+                                                                                  false)
+                                                                          .address
+                                                                          .toString()
+                                                                          .substring(
+                                                                              0,
+                                                                              26);
+                                                                  String destination = Provider.of<
+                                                                              DestinationMarkers>(
+                                                                          context,
+                                                                          listen:
+                                                                              false)
+                                                                      .address
+                                                                      .toString()
+                                                                      .substring(
+                                                                          0,
+                                                                          26);
+                                                                  String travel_time = Provider.of<
+                                                                              DirectionsProvider>(
+                                                                          context,
+                                                                          listen:
+                                                                              false)
+                                                                      .time
+                                                                      .toString()
+                                                                      .substring(
+                                                                          0,
+                                                                          Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4
+                                                                              ? 4
+                                                                              : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length);
+
+                                                                  Position
+                                                                      userLocation =
+                                                                      await Geolocator.getCurrentPosition(
+                                                                          desiredAccuracy:
+                                                                              LocationAccuracy.high);
+                                                                  String travel_distance = Provider.of<
+                                                                              DirectionsProvider>(
+                                                                          context,
+                                                                          listen:
+                                                                              false)
+                                                                      .distance
+                                                                      .toString()
+                                                                      .substring(
+                                                                          0,
+                                                                          Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4
+                                                                              ? 4
+                                                                              : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length);
+                                                                  Msg().sendRidereq(
+                                                                      userLocation,
+                                                                      l1[index][3].toString(),
+                                                                      Provider.of<AccountProvider>(context, listen: false).userAccount.Uid,
+                                                                      Provider.of<AccountProvider>(context, listen: false).userAccount.Username,
+                                                                      Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address,
+                                                                      Provider.of<DestinationMarkers>(context, listen: false).address,
+                                                                      usertoken!,
+                                                                      travel_distance,
+                                                                      travel_time,
+                                                                      Provider.of<AccountProvider>(context, listen: false).userAccount.Ph,
+                                                                      pickup_lat,
+                                                                      pickup_long,
+                                                                      destination_lat,
+                                                                      destination_long,
+                                                                      "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}");
+                                                                  showDialog(
+                                                                      context:
+                                                                          context,
+                                                                      builder:
+                                                                          (context) {
+                                                                        timer_stream = Stream.periodic(
+                                                                            Duration(seconds: 1),
+                                                                            (time) {
+                                                                          return time;
+                                                                        });
+                                                                        Future.delayed(
+                                                                            Duration(seconds: 201),
+                                                                            () {
+                                                                          while (
+                                                                              Navigator.of(context, rootNavigator: true).canPop()) {
+                                                                            Navigator.of(context, rootNavigator: true).pop('dialog');
+                                                                          }
+                                                                        });
+                                                                        return AlertDialog(
+                                                                          content: StreamBuilder(
+                                                                              initialData: 0,
+                                                                              stream: timer_stream,
+                                                                              builder: (builder, ctx) {
+                                                                                return SingleChildScrollView(
+                                                                                  child: Container(
+                                                                                    color: Colors.white,
+                                                                                    padding: EdgeInsets.all(4),
+                                                                                    width: MediaQuery.of(context).size.width * 0.75,
+                                                                                    height: min(
+                                                                                      350,
+                                                                                      MediaQuery.of(context).size.height * 0.5,
+                                                                                    ),
+                                                                                    child: Column(
+                                                                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                      children: [
+                                                                                        LinearProgressIndicator(
+                                                                                          value: (double.tryParse(ctx.data.toString())! / 201),
+                                                                                          backgroundColor: Colors.grey.shade400,
+                                                                                          valueColor: AlwaysStoppedAnimation(Colors.grey.shade700),
+                                                                                        ),
+                                                                                        Row(
+                                                                                          mainAxisAlignment: MainAxisAlignment.start,
+                                                                                          children: [
+                                                                                            CircularProfileAvatar(
+                                                                                              l1[index][0].toString(),
+                                                                                              imageFit: BoxFit.cover,
+                                                                                              radius: 45,
+                                                                                              cacheImage: true,
+                                                                                              initialsText: Text(l1[index][2].toString().substring(0, 1)),
+                                                                                            ),
+                                                                                            SizedBox(
+                                                                                              width: 10,
+                                                                                            ),
+                                                                                            Column(
+                                                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                              children: [
+                                                                                                Text(
+                                                                                                  l1[index][1],
+                                                                                                  overflow: TextOverflow.ellipsis,
+                                                                                                  style: TextStyle(color: Colors.grey.shade800, fontSize: 18, fontWeight: FontWeight.w600),
+                                                                                                ),
+                                                                                                Text(
+                                                                                                  "$travel_distance Km | $travel_time Min",
+                                                                                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w300),
+                                                                                                ),
+                                                                                              ],
+                                                                                            )
+                                                                                          ],
+                                                                                        ),
+                                                                                        Text(
+                                                                                          "Pickup",
+                                                                                          textAlign: TextAlign.center,
+                                                                                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                                                                                        ),
+                                                                                        SingleChildScrollView(
+                                                                                          scrollDirection: Axis.horizontal,
+                                                                                          child: Text(
+                                                                                            pickup,
+                                                                                            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                                                                                          ),
+                                                                                        ),
+                                                                                        Text(
+                                                                                          "Destination",
+                                                                                          textAlign: TextAlign.center,
+                                                                                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                                                                                        ),
+                                                                                        SingleChildScrollView(
+                                                                                          scrollDirection: Axis.horizontal,
+                                                                                          child: Text(
+                                                                                            destination,
+                                                                                            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                                                                                          ),
+                                                                                        ),
+                                                                                        SizedBox(
+                                                                                          height: 4,
+                                                                                        ),
+                                                                                        SlideAction(
+                                                                                          submittedIcon: Icon(
+                                                                                            Iconsax.close_circle4,
+                                                                                            size: 15,
+                                                                                            color: Colors.red.shade700,
+                                                                                          ),
+                                                                                          text: "Slide to cancel",
+                                                                                          textStyle: TextStyle(color: Colors.grey.shade400),
+                                                                                          sliderButtonIconPadding: 9,
+                                                                                          height: 40,
+                                                                                          sliderButtonIconSize: 20,
+                                                                                          reversed: true,
+                                                                                          sliderButtonIcon: Icon(
+                                                                                            Iconsax.close_circle4,
+                                                                                            size: 15,
+                                                                                            color: Colors.white,
+                                                                                          ),
+                                                                                          onSubmit: () {
+                                                                                            Future.delayed(Duration(seconds: 1), () {
+                                                                                              Msg().sendRideCancelReq(l1[index][3].toString());
+                                                                                              while (Navigator.of(context, rootNavigator: true).canPop()) {
+                                                                                                Navigator.of(context, rootNavigator: true).pop('dialog');
+                                                                                              }
+                                                                                            });
+                                                                                          },
+                                                                                          innerColor: Colors.red.shade600,
+                                                                                          outerColor: Colors.white,
+                                                                                        ),
+                                                                                      ],
+                                                                                    ),
+                                                                                  ),
+                                                                                );
+                                                                              }),
+                                                                        );
+                                                                      });
+                                                                },
+                                                                child:
+                                                                    Container(
+                                                                  padding: const EdgeInsets
+                                                                          .symmetric(
+                                                                      vertical:
+                                                                          3),
+                                                                  child: Row(
+                                                                    mainAxisAlignment:
+                                                                        MainAxisAlignment
+                                                                            .spaceBetween,
+                                                                    children: [
+                                                                      Row(
+                                                                        children: [
+                                                                          ClipRRect(
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(25),
+                                                                            child:
+                                                                                Image.network(
+                                                                              l1[index][0],
+                                                                              width: 50,
+                                                                              height: 50,
+                                                                              fit: BoxFit.cover,
+                                                                            ),
+                                                                          ),
+                                                                          SizedBox(
+                                                                            width:
+                                                                                10,
+                                                                          ),
+                                                                          Text(
+                                                                            l1[index][1],
+                                                                            textAlign:
+                                                                                TextAlign.left,
+                                                                            style:
+                                                                                GoogleFonts.dmSans(fontSize: 17),
+                                                                          ),
+                                                                        ],
+                                                                      ),
+                                                                      Container(
+                                                                        width:
+                                                                            50,
+                                                                        child:
+                                                                            Row(
+                                                                          mainAxisAlignment:
+                                                                              MainAxisAlignment.start,
+                                                                          children: [
+                                                                            Icon(
+                                                                              LineIcons.starAlt,
+                                                                              color: Colors.amber,
+                                                                            ),
+                                                                            Text(
+                                                                              "${l1[index][2]}",
+                                                                              textAlign: TextAlign.left,
+                                                                              style: GoogleFonts.dmSans(
+                                                                                fontSize: 15,
+                                                                              ),
+                                                                            )
+                                                                          ],
+                                                                        ),
+                                                                      )
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            );
+                                                          }
+                                                        },
+                                                      ),
+                                              ),
+                                              // Padding(
+                                              //   padding:
+                                              //       const EdgeInsets.symmetric(
+                                              //           horizontal: 18),
+                                              //   child: Row(
+                                              //     mainAxisAlignment:
+                                              //         MainAxisAlignment
+                                              //             .spaceBetween,
+                                              //     children: [
+                                              //       DropdownButton<String>(
+                                              //         value: selectedPayment,
+                                              //         icon: Icon(
+                                              //           LineIcons.wallet,
+                                              //           color: Colors.black,
+                                              //         ),
+                                              //         underline: SizedBox(
+                                              //           width: 0,
+                                              //           height: 1,
+                                              //           child: Container(
+                                              //               color:
+                                              //                   Colors.black87),
+                                              //         ),
+                                              //         iconSize: 24,
+                                              //         elevation: 0,
+                                              //         menuMaxHeight: 120,
+                                              //         itemHeight: 48,
+                                              //         style: const TextStyle(
+                                              //             color: Colors.black),
+                                              //         dropdownColor:
+                                              //             Colors.grey[100],
+                                              //         borderRadius:
+                                              //             BorderRadius.circular(
+                                              //                 10),
+                                              //         onChanged:
+                                              //             (String? newValue) {
+                                              //           setState(() {
+                                              //             selectedPayment =
+                                              //                 newValue!;
+                                              //           });
+                                              //         },
+                                              //         items: <String>[
+                                              //           'Cash',
+                                              //           'Razorpay'
+                                              //         ].map<
+                                              //                 DropdownMenuItem<
+                                              //                     String>>(
+                                              //             (String value) {
+                                              //           return DropdownMenuItem<
+                                              //               String>(
+                                              //             value: value,
+                                              //             child: Container(
+                                              //               child: Row(
+                                              //                 mainAxisAlignment:
+                                              //                     MainAxisAlignment
+                                              //                         .start,
+                                              //                 children: [
+                                              //                   Padding(
+                                              //                     padding:
+                                              //                         const EdgeInsets
+                                              //                                 .only(
+                                              //                             bottom:
+                                              //                                 2),
+                                              //                     child: Text(''),
+                                              //                   ),
+                                              //                   SizedBox(
+                                              //                     width: 9,
+                                              //                   ),
+                                              //                   Image.asset(
+                                              //                     "asset/images/$value.png",
+                                              //                     fit: BoxFit
+                                              //                         .cover,
+                                              //                   ),
+                                              //                   value == "Cash"
+                                              //                       ? Text(
+                                              //                           "  \u{20B9}")
+                                              //                       : Text(
+                                              //                           "",
+                                              //                         ),
+                                              //                 ],
+                                              //               ),
+                                              //               width: 80,
+                                              //               height: 25,
+                                              //             ),
+                                              //           );
+                                              //         }).toList(),
+                                              //       ),
+                                              //       ElevatedButton.icon(
+                                              //         onPressed:
+                                              //             getDriverDeatials,
+                                              //         style: ElevatedButton
+                                              //             .styleFrom(
+                                              //                 padding: EdgeInsets
+                                              //                     .symmetric(
+                                              //                         horizontal:
+                                              //                             24,
+                                              //                         vertical:
+                                              //                             8),
+                                              //                 primary:
+                                              //                     Colors.black),
+                                              //         icon: Icon(LineIcons.car),
+                                              //         label: Text("Search Cab"),
+                                              //       ),
+                                              //     ],
+                                              //   ),
+                                              // )
+                                            ],
                                           ),
-                                          SizedBox(
-                                            height: 20,
-                                          ),
-                                          Container(
-                                            height: 280,
-                                            width: MediaQuery.of(context)
-                                                    .size
-                                                    .width *
-                                                0.9,
-                                            alignment: Alignment.center,
-                                            child: ListView.builder(
-                                              itemCount: l1.length,
-                                              itemBuilder:
-                                                  (BuildContext context,
-                                                      int index) {
-                                                if (l1.length == 0) {
-                                                  return Center(
-                                                    child: Text(
-                                                        "No Drivers found near by",
+                                        )
+                                      ],
+                                    ),
+                                  )
+                                : Container(
+                                    height: 250.0,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 24.0, vertical: 10.0),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(18.0),
+                                        topRight: Radius.circular(18.0),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Color.fromRGBO(0, 0, 0, 0.3),
+                                          blurRadius: 16.5,
+                                          spreadRadius: 0.5,
+                                          offset: Offset(0.7, 0.7),
+                                        )
+                                      ],
+                                    ),
+                                    child: ListView(
+                                      controller: scrollController,
+                                      children: [
+                                        Column(
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.arrow_drop_up_rounded,
+                                                  size: 30,
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          18.0),
+                                                  child: Image.network(
+                                                      "${Provider.of<DriverProvider>(context, listen: false).driver.imageurl}",
+                                                      width: 70,
+                                                      height: 70,
+                                                      fit: BoxFit.cover),
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                        "${Provider.of<DriverProvider>(context, listen: false).driver.username}",
                                                         style:
-                                                            GoogleFonts.ubuntu(
+                                                            GoogleFonts.roboto(
+                                                                fontSize: 18,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w600)),
-                                                  );
-                                                } else {
-                                                  return Material(
-                                                    color: Colors.white,
-                                                    child: InkWell(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                      splashColor:
-                                                          Colors.blueGrey[100],
-                                                      onTap: () {
-                                                        print(
-                                                            '${l1[index][1]} is selected as driver');
-                                                      },
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .symmetric(
-                                                                vertical: 3),
-                                                        child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
-                                                          children: [
-                                                            Row(
-                                                              children: [
-                                                                ClipRRect(
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              25),
-                                                                  child: Image
-                                                                      .network(
-                                                                    l1[index]
-                                                                        [0],
-                                                                    width: 50,
-                                                                    height: 50,
-                                                                    fit: BoxFit
-                                                                        .cover,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(
-                                                                  width: 10,
-                                                                ),
-                                                                Text(
-                                                                  l1[index][1],
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .left,
-                                                                  style: GoogleFonts
-                                                                      .dmSans(
-                                                                          fontSize:
-                                                                              17),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            Container(
-                                                              width: 50,
-                                                              child: Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .start,
-                                                                children: [
-                                                                  Icon(
-                                                                    LineIcons
-                                                                        .starAlt,
-                                                                    color: Colors
-                                                                        .amber,
-                                                                  ),
-                                                                  Text(
-                                                                    "${l1[index][2]}",
-                                                                    textAlign:
-                                                                        TextAlign
-                                                                            .left,
-                                                                    style: GoogleFonts
-                                                                        .dmSans(
-                                                                      fontSize:
-                                                                          15,
-                                                                    ),
-                                                                  )
-                                                                ],
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
+                                                    Text(
+                                                        "${Provider.of<DriverProvider>(context, listen: false).driver.phone}",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 13,
+                                                                color: Colors
+                                                                    .black45))
+                                                  ],
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      LineIcons.starAlt,
+                                                      color: Colors.amber,
                                                     ),
-                                                  );
-                                                }
-                                              },
+                                                    Text(
+                                                      "  ${Provider.of<DriverProvider>(context, listen: false).driver.rating}",
+                                                      textAlign: TextAlign.left,
+                                                      style: GoogleFonts.dmSans(
+                                                        fontSize: 15,
+                                                      ),
+                                                    )
+                                                  ],
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                          // Padding(
-                                          //   padding:
-                                          //       const EdgeInsets.symmetric(
-                                          //           horizontal: 18),
-                                          //   child: Row(
-                                          //     mainAxisAlignment:
-                                          //         MainAxisAlignment
-                                          //             .spaceBetween,
-                                          //     children: [
-                                          //       DropdownButton<String>(
-                                          //         value: selectedPayment,
-                                          //         icon: Icon(
-                                          //           LineIcons.wallet,
-                                          //           color: Colors.black,
-                                          //         ),
-                                          //         underline: SizedBox(
-                                          //           width: 0,
-                                          //           height: 1,
-                                          //           child: Container(
-                                          //               color:
-                                          //                   Colors.black87),
-                                          //         ),
-                                          //         iconSize: 24,
-                                          //         elevation: 0,
-                                          //         menuMaxHeight: 120,
-                                          //         itemHeight: 48,
-                                          //         style: const TextStyle(
-                                          //             color: Colors.black),
-                                          //         dropdownColor:
-                                          //             Colors.grey[100],
-                                          //         borderRadius:
-                                          //             BorderRadius.circular(
-                                          //                 10),
-                                          //         onChanged:
-                                          //             (String? newValue) {
-                                          //           setState(() {
-                                          //             selectedPayment =
-                                          //                 newValue!;
-                                          //           });
-                                          //         },
-                                          //         items: <String>[
-                                          //           'Cash',
-                                          //           'Razorpay'
-                                          //         ].map<
-                                          //                 DropdownMenuItem<
-                                          //                     String>>(
-                                          //             (String value) {
-                                          //           return DropdownMenuItem<
-                                          //               String>(
-                                          //             value: value,
-                                          //             child: Container(
-                                          //               child: Row(
-                                          //                 mainAxisAlignment:
-                                          //                     MainAxisAlignment
-                                          //                         .start,
-                                          //                 children: [
-                                          //                   Padding(
-                                          //                     padding:
-                                          //                         const EdgeInsets
-                                          //                                 .only(
-                                          //                             bottom:
-                                          //                                 2),
-                                          //                     child: Text(''),
-                                          //                   ),
-                                          //                   SizedBox(
-                                          //                     width: 9,
-                                          //                   ),
-                                          //                   Image.asset(
-                                          //                     "asset/images/$value.png",
-                                          //                     fit: BoxFit
-                                          //                         .cover,
-                                          //                   ),
-                                          //                   value == "Cash"
-                                          //                       ? Text(
-                                          //                           "  \u{20B9}")
-                                          //                       : Text(
-                                          //                           "",
-                                          //                         ),
-                                          //                 ],
-                                          //               ),
-                                          //               width: 80,
-                                          //               height: 25,
-                                          //             ),
-                                          //           );
-                                          //         }).toList(),
-                                          //       ),
-                                          //       ElevatedButton.icon(
-                                          //         onPressed:
-                                          //             getDriverDeatials,
-                                          //         style: ElevatedButton
-                                          //             .styleFrom(
-                                          //                 padding: EdgeInsets
-                                          //                     .symmetric(
-                                          //                         horizontal:
-                                          //                             24,
-                                          //                         vertical:
-                                          //                             8),
-                                          //                 primary:
-                                          //                     Colors.black),
-                                          //         icon: Icon(LineIcons.car),
-                                          //         label: Text("Search Cab"),
-                                          //       ),
-                                          //     ],
-                                          //   ),
-                                          // )
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              );
+                                            SizedBox(
+                                              height: 5,
+                                            ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Image.network(
+                                                    '${Provider.of<DriverProvider>(context, listen: false).driver.cabimage}',
+                                                    width: 140,
+                                                    height: 90,
+                                                    fit: BoxFit.cover),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '${Provider.of<DriverProvider>(context, listen: false).driver.cab_model}',
+                                                      style: GoogleFonts.roboto(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600),
+                                                    ),
+                                                    Text(
+                                                      '${Provider.of<DriverProvider>(context, listen: false).driver.cab_number}',
+                                                      style: GoogleFonts.roboto(
+                                                        fontSize: 15,
+                                                        color: Colors.black54,
+                                                      ),
+                                                    )
+                                                  ],
+                                                )
+                                              ],
+                                            ),
+                                            SizedBox(
+                                              height: 12,
+                                            ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    FaIcon(Iconsax.map5),
+                                                    SizedBox(
+                                                      width: 10,
+                                                    ),
+                                                    Text(
+                                                        "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
+                                                            " KM",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 14,
+                                                                color: Colors
+                                                                    .black45))
+                                                  ],
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Icon(Iconsax.clock5),
+                                                    SizedBox(
+                                                      width: 10,
+                                                    ),
+                                                    Text(
+                                                        "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)}" +
+                                                            " Min",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 14,
+                                                                color: Colors
+                                                                    .black45))
+                                                  ],
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Text(' \u{20B9}',
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 20,
+                                                                color: Colors
+                                                                    .black)),
+                                                    SizedBox(
+                                                      width: 10,
+                                                    ),
+                                                    Text(
+                                                        "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}" +
+                                                            " Rupees",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 14,
+                                                                color: Colors
+                                                                    .black45))
+                                                  ],
+                                                )
+                                              ],
+                                            ),
+                                            SizedBox(
+                                              height: 16,
+                                            ),
+                                            SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons
+                                                      .my_location_rounded),
+                                                  SizedBox(
+                                                    width: 10,
+                                                  ),
+                                                  Text(
+                                                    "${Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address}",
+                                                    style: GoogleFonts.openSans(
+                                                        fontSize: 16,
+                                                        color: Colors.black54),
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: 16,
+                                            ),
+                                            SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons
+                                                      .location_on_rounded),
+                                                  SizedBox(
+                                                    width: 10,
+                                                  ),
+                                                  Text(
+                                                    "${Provider.of<DestinationMarkers>(context, listen: false).address}",
+                                                    style: GoogleFonts.openSans(
+                                                        fontSize: 16,
+                                                        color: Colors.black54),
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: 10,
+                                            ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceAround,
+                                              children: [
+                                                TextButton.icon(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                          primary: Colors.black,
+                                                          padding: EdgeInsets
+                                                              .symmetric(
+                                                            vertical: 8,
+                                                            horizontal: 20,
+                                                          )),
+                                                  onPressed: () {
+                                                    launch(
+                                                        "tel://${Provider.of<DriverProvider>(context, listen: false).driver.phone}");
+                                                  },
+                                                  icon: Icon(
+                                                    Icons.phone,
+                                                    color: Colors.white,
+                                                  ),
+                                                  label: Text(" Call",
+                                                      style: GoogleFonts
+                                                          .montserrat(
+                                                              fontSize: 16,
+                                                              color: Colors
+                                                                  .white)),
+                                                ),
+                                                TextButton.icon(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                          primary: Colors.black,
+                                                          padding: EdgeInsets
+                                                              .symmetric(
+                                                            vertical: 8,
+                                                            horizontal: 20,
+                                                          )),
+                                                  onPressed: () {},
+                                                  icon: Icon(
+                                                    Icons.cancel_outlined,
+                                                    color: Colors.white,
+                                                  ),
+                                                  label: Text(" Cancel Ride",
+                                                      style: GoogleFonts
+                                                          .montserrat(
+                                                              fontSize: 16,
+                                                              color: Colors
+                                                                  .white)),
+                                                )
+                                              ],
+                                            )
+                                          ],
+                                        )
+                                      ],
+                                    ),
+                                  );
                   },
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 15, left: 20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color.fromRGBO(255, 255, 255, .7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      tooltip: "Menu",
+                      onPressed: () {
+                        _scaffoldKey.currentState!.openDrawer();
+                      },
+                      icon: Icon(Iconsax.menu_1),
+                    ),
+                  ),
                 ),
               ],
             ),

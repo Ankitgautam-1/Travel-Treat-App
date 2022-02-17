@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:app/views/Dashboard.dart';
+import 'package:app/views/Maps.dart';
 import 'package:app/views/number_verify.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,6 +10,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
 import 'package:open_apps_settings/settings_enum.dart';
@@ -23,6 +26,7 @@ import 'package:get/get.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
+import 'package:loader_overlay/loader_overlay.dart';
 
 class SignIn extends StatefulWidget {
   final FirebaseApp app;
@@ -42,97 +46,112 @@ class _SignInState extends State<SignIn> {
   Map<dynamic, dynamic>? result;
   bool _obscure = true;
   bool isloading = false;
+  String ImageUrl = "";
+  final _firestore = FirebaseFirestore.instance;
   UserCredential? userCredential;
   loc.Location location = loc.Location();
   Future loginwithemail() async {
     if (_formkey.currentState!.validate()) {
       _formkey.currentState!.save();
+      setState(() {
+        context.loaderOverlay.show();
+      });
       try {
-        setState(() {
-          isloading = true;
-        });
         await _auth.signInWithEmailAndPassword(
             email: _email.text, password: _pass.text);
 
         User? user = _auth.currentUser;
         var uid = user!.uid;
         print("Uid :$uid");
-        try {
-          final DatabaseReference db = FirebaseDatabase(app: app).reference();
+        var collectionReference = _firestore.collection('Users');
+        collectionReference.doc(uid).get().then((value) async {
+          ImageUrl = value.data()!["Image"];
 
-          await db.child('Users').child(uid).get().then(
-                (DataSnapshot? datasnapshot) => print(
-                  result = datasnapshot!.value,
-                ),
-              );
-          username = result!['Username'];
-          email = result!['Email'];
-          ph = result!['Phone'];
-          image = result!['Image'];
-          emph = result!['emph'];
-          token = result!['token'];
-          print("$username ,$email,$image,$ph");
-          UserAccount userAccount = UserAccount(
-              Email: email!,
-              Image: image!,
-              Ph: ph!,
-              Uid: uid,
-              emph: emph!,
-              Username: username!);
+          try {
+            final DatabaseReference db = FirebaseDatabase(app: app).reference();
 
-          Provider.of<AccountProvider>(context, listen: false)
-              .updateuseraccount(userAccount);
-          bool cacheimage = await File(image!).exists();
-          print("cache_image:$cacheimage");
-          if (cacheimage) {
-            Get.snackbar(
-                "Account details", "Getting account details please await",
-                snackPosition: SnackPosition.BOTTOM);
-            Provider.of<ImageData>(context, listen: false)
-                .updateimage(File(image!));
-          } else {
-            firebase_storage.Reference ref = firebase_storage
-                .FirebaseStorage.instance
-                .ref()
-                .child('Users_profile')
-                .child('/${user.uid}/${user.uid}');
-            String url = await ref.getDownloadURL();
-            print("url:->$url");
-            Dio newimage = Dio();
-            String savePath =
-                Directory.systemTemp.path + '/' + user.uid + "_profile";
-            await newimage.download(url, savePath,
-                options: Options(responseType: ResponseType.bytes));
-            db.child('Users').child(user.uid).update({"Image": savePath});
-            Provider.of<ImageData>(context, listen: false)
-                .updateimage(File(savePath));
-            image = savePath;
+            await db.child('Users').child(uid).get().then(
+                  (DataSnapshot? datasnapshot) => print(
+                    result = datasnapshot!.value,
+                  ),
+                );
+            username = result!['Username'];
+            email = result!['Email'];
+            ph = result!['Phone'];
+            image = result!['Image'];
+            emph = result!['emph'];
+            token = result!['token'];
+
+            print("$username ,$email,$image,$ph");
+            UserAccount userAccount = UserAccount(
+                Email: email!,
+                Image: image!,
+                Ph: ph!,
+                Uid: uid,
+                emph: emph!,
+                ImageUrl: ImageUrl,
+                Username: username!);
+
+            Provider.of<AccountProvider>(context, listen: false)
+                .updateuseraccount(userAccount);
+            bool cacheimage = await File(image!).exists();
+            print("cache_image:$cacheimage");
+            if (cacheimage) {
+              Provider.of<ImageData>(context, listen: false)
+                  .updateimage(File(image!));
+            } else {
+              firebase_storage.Reference ref = firebase_storage
+                  .FirebaseStorage.instance
+                  .ref()
+                  .child('Users_profile')
+                  .child('/${user.uid}/${user.uid}');
+              String url = await ref.getDownloadURL();
+              print("url:->$url");
+              Dio newimage = Dio();
+              String savePath =
+                  Directory.systemTemp.path + '/' + user.uid + "_profile";
+              await newimage.download(url, savePath,
+                  options: Options(responseType: ResponseType.bytes));
+              db.child('Users').child(user.uid).update({"Image": savePath});
+              Provider.of<ImageData>(context, listen: false)
+                  .updateimage(File(savePath));
+              image = savePath;
+            }
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.setString("Uid", user.uid);
+            prefs.setString("Username", username!);
+            prefs.setString("Email", email!);
+            prefs.setString("Ph", ph!);
+            prefs.setString("Image", image!);
+            prefs.setString("emph", emph!);
+
+            if (await permissions.Permission.locationWhenInUse.isGranted ||
+                await permissions.Permission.locationWhenInUse.isLimited ||
+                await permissions.Permission.location.isGranted ||
+                await permissions.Permission.location.isLimited) {
+              _checkGps();
+              setState(() {
+                context.loaderOverlay.hide();
+              });
+            } else {
+              setState(() {
+                context.loaderOverlay.hide();
+              });
+              Get.offAll(LocationPermissoin(app: app));
+            }
+          } on PlatformException catch (e) {
+            Get.snackbar("Sign In ",
+                "Error Occured during sign in internet connection strength is weak",
+                snackPosition: SnackPosition.BOTTOM,
+                duration: Duration(seconds: 4));
+          } catch (e) {
+            print(e);
           }
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          prefs.setString("Uid", user.uid);
-          prefs.setString("Username", username!);
-          prefs.setString("Email", email!);
-          prefs.setString("Ph", ph!);
-          prefs.setString("Image", image!);
-          prefs.setString("emph", emph!);
-
-          if (await permissions.Permission.locationWhenInUse.isGranted ||
-              await permissions.Permission.locationWhenInUse.isLimited ||
-              await permissions.Permission.location.isGranted ||
-              await permissions.Permission.location.isLimited) {
-            _checkGps();
-          } else {
-            Get.offAll(LocationPermissoin(app: app));
-          }
-        } on PlatformException catch (e) {
-          Get.snackbar("Sign In ",
-              "Error Occured during sign in internet connection strength is weak",
-              snackPosition: SnackPosition.BOTTOM,
-              duration: Duration(seconds: 4));
-        } catch (e) {
-          print(e);
-        }
+        });
       } on FirebaseAuthException catch (e) {
+        setState(() {
+          context.loaderOverlay.hide();
+        });
         if (e.code == 'user-not-found') {
           Get.snackbar("Sign In", "Error Occured usernot found",
               snackPosition: SnackPosition.BOTTOM);
@@ -141,12 +160,12 @@ class _SignInState extends State<SignIn> {
               snackPosition: SnackPosition.BOTTOM);
         }
       } catch (e) {
+        setState(() {
+          context.loaderOverlay.hide();
+        });
         Get.snackbar("Sign In", "Error Occured $e",
             snackPosition: SnackPosition.BOTTOM);
       }
-      setState(() {
-        isloading = false;
-      });
     } else {
       print("Not valid");
     }
@@ -277,7 +296,7 @@ class _SignInState extends State<SignIn> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Dashboard(app: app));
+                Get.offAll(Maps(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -286,15 +305,15 @@ class _SignInState extends State<SignIn> {
         },
       );
     } else {
-      Get.offAll(Dashboard(app: app));
+      Get.offAll(Maps(app: app));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 8.0),
+      child: LoaderOverlay(
+        useDefaultLoading: true,
         child: Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
@@ -302,7 +321,7 @@ class _SignInState extends State<SignIn> {
             backgroundColor: Colors.white,
             title: Text(
               'Sign In',
-              style: TextStyle(fontSize: 20, color: Colors.black),
+              style: GoogleFonts.roboto(color: Colors.black),
             ),
             centerTitle: true,
             elevation: 0,
@@ -341,10 +360,10 @@ class _SignInState extends State<SignIn> {
                           width: 320,
                           child: TextFormField(
                             controller: _email,
-                            validator: (val) => val!.contains('@gmail.com')
-                                ? null
-                                : "Enter valide email",
+                            validator: (val) =>
+                                val!.isEmail ? null : "Enter valide email",
                             keyboardType: TextInputType.text,
+                            style: GoogleFonts.openSans(),
                             textInputAction: TextInputAction.next,
                             cursorColor: Colors.black,
                             decoration: InputDecoration(
@@ -354,6 +373,8 @@ class _SignInState extends State<SignIn> {
                               ),
                               contentPadding: EdgeInsets.all(20),
                               hintText: "Email",
+                              hintStyle: GoogleFonts.roboto(
+                                  color: Colors.black54, fontSize: 15),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide(width: .6),
@@ -375,6 +396,7 @@ class _SignInState extends State<SignIn> {
                           child: TextFormField(
                             obscureText: _obscure,
                             controller: _pass,
+                            style: GoogleFonts.openSans(),
                             validator: (val) => val!.length > 6
                                 ? null
                                 : "password should be at least 6 charcter",
@@ -405,6 +427,8 @@ class _SignInState extends State<SignIn> {
                               ),
                               contentPadding: EdgeInsets.all(20),
                               hintText: "Password",
+                              hintStyle: GoogleFonts.roboto(
+                                  color: Colors.black54, fontSize: 15),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide(width: .6),
@@ -448,12 +472,9 @@ class _SignInState extends State<SignIn> {
                                 .unfocus(); //to hide the keyboard by unfocusing on textformfield
                             await loginwithemail();
                           },
-                          child: Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 15,
-                            ),
-                          ),
+                          child: Text('Sign In',
+                              style: GoogleFonts.ubuntu(
+                                  color: Colors.white, fontSize: 16)),
                           style: ElevatedButton.styleFrom(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
@@ -463,7 +484,7 @@ class _SignInState extends State<SignIn> {
                             onPrimary: Colors.white,
                             primary: Colors.black,
                             padding: EdgeInsets.symmetric(
-                              horizontal: 90,
+                              horizontal: 80,
                               vertical: 13,
                             ),
                           ),
@@ -512,50 +533,36 @@ class _SignInState extends State<SignIn> {
                             padding: EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 7),
                           ),
-                          label: Text(
-                            'Sign in with Google',
-                            style: TextStyle(
-                              fontSize: 17,
-                            ),
-                          ),
-                          icon: Padding(
-                            padding: const EdgeInsets.only(right: 7.0),
-                            child: Image.asset(
-                              'asset/images/google_logo.png',
-                              width: 35,
-                            ),
+                          label: Text('Sign in with Google',
+                              style: GoogleFonts.ubuntu(
+                                  color: Colors.black, fontSize: 16)),
+                          icon: Image.asset(
+                            'asset/images/google_logo.png',
+                            width: 35,
                           ),
                           onPressed: () async {
                             signInWithGoogle();
                           },
                         ),
                         SizedBox(
-                          height: 12,
+                          height: 40,
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'Don\'t have an Account ?',
-                              style: TextStyle(
-                                fontSize: 16,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
+                            Text('Don\'t have an Account ?',
+                                style: GoogleFonts.roboto(
+                                    color: Colors.black, fontSize: 16)),
+                            GestureDetector(
+                              onTap: () {
                                 Get.off(SignUp(app: app));
                               },
-                              child: Text(
-                                ' Sign Up',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.blue,
-                                ),
-                              ),
+                              child: Text(' Sign Up',
+                                  style: GoogleFonts.roboto(
+                                      color: Colors.blue, fontSize: 16)),
                             ),
                           ],
                         ),
-                        isloading ? CircularProgressIndicator() : Container(),
                       ],
                     ),
                   ),

@@ -20,137 +20,136 @@ class _TestState extends State<Test> {
     bool isloading = false;
     return SafeArea(
       child: Scaffold(
-        body: Stack(
-          children: [
-            Positioned.fill(
-              top: 0,
-              left: 0,
-              child: Container(
-                color: Colors.white,
-                child: Column(
-                  children: [],
-                ),
-              ),
-            ),
-            Positioned(
-              //!Blue
-              top: 0,
-              left: 0,
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height * .50,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Color.fromRGBO(30, 30, 30, 1),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                  boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black)],
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Icons.keyboard_backspace,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 70,
-                      left: 134,
-                      child: Text(
-                        'Sign in',
-                        style: TextStyle(color: Colors.white, fontSize: 30),
-                        // style: GoogleFonts.aBeeZee(
-                        //     color: Colors.white, fontSize: 30),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 150,
-              left: 0,
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height * .50,
-              child: Container(
-                decoration: BoxDecoration(
+        body: Center(
+          child: Column(
+            children: [
+              Expanded(
+                flex: 1,
+                child: Container(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color.fromRGBO(0, 0, 0, 0.4),
-                      blurRadius: 6.0,
-                      spreadRadius: 0.5,
-                      offset: Offset(0.7, 0.7),
-                    )
-                  ],
+                  height: 220,
+                  child: Column(
+                    children: [
+                      SizedBox(height: 60),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 5, right: 150),
+                        child: Text(
+                          'Welcome to',
+                          style: TextStyle(
+                            fontSize: 32,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 5, right: 150),
+                        child: Text(
+                          'Travel Treat',
+                          style: TextStyle(
+                            fontSize: 32,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 30),
+                      Image.asset(
+                        'asset/images/cab.jpg',
+                        width: 360,
+                      ),
+                      SizedBox(height: 30),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 80),
+                          primary: Colors.black87,
+                          onPrimary: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(13.0),
+                          ),
+                        ),
+                        onPressed: () {
+                          Get.to(SignIn(app: app));
+                        },
+                        child: Text(
+                          ' Sign In ',
+                          style: TextStyle(
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 15,
+                      ),
+                      isloading
+                          ? Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Container(
+                                height: 20,
+                                width: 20,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                            )
+                          : SizedBox(
+                              height: 20,
+                            ),
+                      Center(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            primary: Colors.black,
+                            shape: StadiumBorder(),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 13, vertical: 6),
+                          ),
+                          label: Text(
+                            'Sign In with Google',
+                            style:
+                                TextStyle(fontFamily: 'Ubuntu', fontSize: 17),
+                          ),
+                          icon: Image.asset(
+                            'asset/images/google_logo.png',
+                            width: 35,
+                          ),
+                          onPressed: () async {},
+                        ),
+                      ),
+                      SizedBox(
+                        height: 10,
+                        child: TextButton(
+                          onPressed: () {
+                            Get.to(SignIn(app: app));
+                          },
+                          child: Text("Login"),
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Don\'t have an Account ?',
+                            style: TextStyle(
+                              fontSize: 16,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Get.to(SignUp(app: app));
+                            },
+                            child: Text(
+                              ' Sign Up',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Welcome",
-                      style: TextStyle(fontSize: 24),
-                    ),
-                    SizedBox(
-                      height: 20,
-                    ),
-                    SizedBox(
-                      width: 300,
-                      child: TextFormField(
-                        cursorWidth: 1,
-                        decoration: InputDecoration(
-                          hintText: "Username",
-                          border: UnderlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 20,
-                    ),
-                    SizedBox(
-                      width: 300,
-                      child: TextFormField(
-                        cursorWidth: 1,
-                        decoration: InputDecoration(
-                          hintText: "Password",
-                          border: UnderlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding:
-                            EdgeInsets.symmetric(vertical: 10, horizontal: 80),
-                        primary: Colors.black87,
-                        onPrimary: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        Get.to(SignIn(app: app));
-                      },
-                      child: Text(
-                        ' Sign In ',
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+              )
+            ],
+          ),
         ),
       ),
     );

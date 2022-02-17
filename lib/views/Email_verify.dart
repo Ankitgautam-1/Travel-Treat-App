@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:app/views/Dashboard.dart';
+import 'package:app/views/Maps.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -18,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:location/location.dart' as loc;
+import 'package:supabase/supabase.dart' as sm;
 
 class EmailVerify extends StatefulWidget {
   final FirebaseApp app;
@@ -39,6 +42,7 @@ class _EmailVerifyState extends State<EmailVerify> {
   bool isdisable = false;
   bool isloading = false;
   loc.Location location = loc.Location();
+  final _firestore = FirebaseFirestore.instance;
   @override
   void initState() {
     user = auth.currentUser;
@@ -141,63 +145,84 @@ class _EmailVerifyState extends State<EmailVerify> {
       setState(() {
         isloading = true;
       });
-      try {
-        firebase_storage.Reference ref = firebase_storage
-            .FirebaseStorage.instance
-            .ref()
-            .child('Users_profile')
-            .child('/${user!.uid}/${user!.uid}');
-        print("Uploading image");
-        File prof = Provider.of<ImageData>(context, listen: false).image!;
-        uploadTask = ref.putFile(prof);
-        print('Uploaded image');
-        final DatabaseReference db = FirebaseDatabase(app: app).reference();
+      File prof = Provider.of<ImageData>(context, listen: false).image!;
+      final client = sm.SupabaseClient(
+          'https://ugxqtrototfqtawjhnol.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjM5NjQ0MzM2LCJleHAiOjE5NTUyMjAzMzZ9.7ZRfV8ekUJBSLVQWA6ylO5gdbE5BNnnD8lyZDflOgU0');
+      client.storage
+          .from("travel-treat-storage")
+          .upload('Users/${user!.uid}/${user!.uid}', prof)
+          .then((value) {
+        try {
+          firebase_storage.Reference ref = firebase_storage
+              .FirebaseStorage.instance
+              .ref()
+              .child('Users_profile')
+              .child('/${user!.uid}/${user!.uid}');
+          print("Uploading image");
 
-        await db.child('Users').child(uid).set(
-          {
-            "Username": "$username",
-            "Email": "$email",
-            "Phone": "$ph",
-            "Image": prof.path,
-            "emph": emph,
-          },
-        );
-        Provider.of<AccountProvider>(context, listen: false).updateuseraccount(
-            UserAccount(
-                Email: email,
-                Image: profile,
-                Ph: ph,
-                Uid: uid,
-                emph: emph,
-                Username: username));
+          uploadTask = ref.putFile(prof);
+          print('Uploaded image');
+          var collectionReference = _firestore.collection('Users');
+          collectionReference.doc(uid).set(
+            {
+              "UserID": uid,
+              "Username": "$username",
+              "Email": "$email",
+              "Phone": "$ph",
+              "Image":
+                  "https://ugxqtrototfqtawjhnol.supabase.in/storage/v1/object/public/travel-treat-storage/Users/${uid}/${uid}",
+              "emph": emph,
+            },
+          ).then((value) async {
+            final DatabaseReference db = FirebaseDatabase(app: app).reference();
+            await db.child('Users').child(uid).set(
+              {
+                "Username": "$username",
+                "Email": "$email",
+                "Phone": "$ph",
+                "Image": prof.path,
+                "emph": emph,
+              },
+            );
+            Provider.of<AccountProvider>(context, listen: false)
+                .updateuseraccount(UserAccount(
+                    Email: email,
+                    Image: profile,
+                    Ph: ph,
+                    Uid: uid,
+                    emph: emph,
+                    Username: username));
 
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString("Username", username);
-        prefs.setString("Email", email);
-        prefs.setString("Ph", ph);
-        prefs.setString("Image", prof.path);
-        prefs.setString("Uid", uid);
-        prefs.setString("emph", emph);
-        if (await permissions.Permission.locationWhenInUse.isGranted ||
-            await permissions.Permission.locationWhenInUse.isLimited ||
-            await permissions.Permission.location.isGranted ||
-            await permissions.Permission.location.isLimited) {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.setString("Username", username);
+            prefs.setString("Email", email);
+            prefs.setString("Ph", ph);
+            prefs.setString("Image", prof.path);
+            prefs.setString("Uid", uid);
+            prefs.setString("emph", emph);
+            if (await permissions.Permission.locationWhenInUse.isGranted ||
+                await permissions.Permission.locationWhenInUse.isLimited ||
+                await permissions.Permission.location.isGranted ||
+                await permissions.Permission.location.isLimited) {
+              setState(() {
+                isloading = false;
+              });
+              _checkGps();
+            } else {
+              setState(() {
+                isloading = false;
+              });
+              Get.offAll(LocationPermissoin(app: app));
+            }
+          });
+        } catch (e) {
           setState(() {
             isloading = false;
           });
-          _checkGps();
-        } else {
-          setState(() {
-            isloading = false;
-          });
-          Get.offAll(LocationPermissoin(app: app));
+          Get.snackbar("Account Creation Error", "Erorr Occured $e");
         }
-      } catch (e) {
-        setState(() {
-          isloading = false;
-        });
-        Get.snackbar("Account Creation Error", "Erorr Occured $e");
-      }
+      });
     }
   }
 
@@ -212,7 +237,7 @@ class _EmailVerifyState extends State<EmailVerify> {
             settingsCode: SettingsCode.LOCATION,
             onCompletion: () async {
               if (await location.serviceEnabled()) {
-                Get.offAll(Dashboard(app: app));
+                Get.offAll(Maps(app: app));
               } else {
                 Get.offAll(LocationPermissoin(app: app));
               }
@@ -221,7 +246,7 @@ class _EmailVerifyState extends State<EmailVerify> {
         },
       );
     } else {
-      Get.offAll(Dashboard(app: app));
+      Get.offAll(Maps(app: app));
     }
   }
 

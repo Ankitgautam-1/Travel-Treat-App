@@ -2,6 +2,7 @@ import 'package:app/Data/pickuploc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/userData.dart';
@@ -89,8 +90,8 @@ class _SearchPlaceState extends State<SearchPlace> {
         appBar: AppBar(
           elevation: 0,
           title: Text(
-            "Select Location",
-            style: TextStyle(color: Colors.white, fontSize: 18),
+            "Search Location",
+            style: GoogleFonts.openSans(color: Colors.white, fontSize: 18),
           ),
           backgroundColor: Colors.black,
         ),
@@ -98,9 +99,9 @@ class _SearchPlaceState extends State<SearchPlace> {
           child: Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height * 0.95,
+            padding: EdgeInsets.only(top: 35),
             child: Column(
               children: [
-                SizedBox(height: 35),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -114,6 +115,7 @@ class _SearchPlaceState extends State<SearchPlace> {
                     Container(
                       width: MediaQuery.of(context).size.width * 0.75,
                       child: TextFormField(
+                        cursorColor: Colors.black,
                         initialValue: Provider.of<UserData>(context,
                                         listen: false)
                                     .pickuplocation !=
@@ -130,8 +132,14 @@ class _SearchPlaceState extends State<SearchPlace> {
                                 : "",
                         keyboardType: TextInputType.streetAddress,
                         onFieldSubmitted: (val) => pickupsearch(val),
+                        style: GoogleFonts.openSans(
+                            fontWeight: FontWeight.w600, fontSize: 14),
                         decoration: InputDecoration(
                           hintText: "Pick Up?",
+                          hintStyle: GoogleFonts.openSans(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              color: Colors.black54),
                           contentPadding: EdgeInsets.symmetric(horizontal: 8),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -160,14 +168,21 @@ class _SearchPlaceState extends State<SearchPlace> {
                       width: MediaQuery.of(context).size.width * 0.75,
                       child: TextFormField(
                         onFieldSubmitted: (val) => destinationsearch(val),
+                        style: GoogleFonts.openSans(
+                            fontWeight: FontWeight.w600, fontSize: 14),
                         keyboardType: TextInputType.streetAddress,
                         initialValue: Provider.of<DestinationMarkers>(context)
                                     .places !=
                                 null
                             ? Provider.of<DestinationMarkers>(context).address
                             : "",
+                        cursorColor: Colors.black,
                         decoration: InputDecoration(
                           hintText: "Where to?",
+                          hintStyle: GoogleFonts.openSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black54),
                           contentPadding: EdgeInsets.symmetric(horizontal: 8),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -191,33 +206,38 @@ class _SearchPlaceState extends State<SearchPlace> {
                           child: ListView.builder(
                               itemCount: placesList.length,
                               itemBuilder: (context, index) {
-                                return ListTile(
-                                  leading: GestureDetector(
-                                      onTap: () {
-                                        Provider.of<UserData>(context,
-                                                listen: false)
-                                            .updatepickuplocation(null);
-                                        print(
-                                          'lat ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
-                                        );
-                                        LatLng place = LatLng(
-                                            placesList[index]["location"]
-                                                ["lat"],
-                                            placesList[index]["location"]
-                                                ["lng"]);
-                                        String address =
-                                            placesList[index]["address"];
-                                        Provider.of<PickupMarkers>(context,
-                                                listen: false)
-                                            .updatePickupMarkers(
-                                                place, address);
-                                        print("place info:->$place");
-                                        Get.back();
-                                        onPlaceSelect();
-                                      },
-                                      child: Icon(Icons.location_on)),
-                                  title:
-                                      Text('${placesList[index]["address"]}'),
+                                return GestureDetector(
+                                  onTap: () {
+                                    Provider.of<UserData>(context,
+                                            listen: false)
+                                        .updatepickuplocation(null);
+                                    print(
+                                      'lat ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
+                                    );
+                                    LatLng place = LatLng(
+                                        placesList[index]["location"]["lat"],
+                                        placesList[index]["location"]["lng"]);
+                                    String address =
+                                        placesList[index]["address"];
+                                    Provider.of<PickupMarkers>(context,
+                                            listen: false)
+                                        .updatePickupMarkers(place, address);
+                                    print("place info:->$place");
+                                    Get.back();
+                                    onPlaceSelect();
+                                  },
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.share_location_outlined,
+                                      color: Colors.blueGrey.shade800,
+                                      size: 30,
+                                    ),
+                                    title: Text(
+                                      '${placesList[index]["address"]}',
+                                      style: GoogleFonts.openSans(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
                                 );
                               }),
                         ),
@@ -239,31 +259,36 @@ class _SearchPlaceState extends State<SearchPlace> {
                             child: ListView.builder(
                               itemCount: placesList.length,
                               itemBuilder: (context, index) {
-                                return ListTile(
-                                  leading: GestureDetector(
-                                      onTap: () {
-                                        print(
-                                          'lat in destination ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
-                                        );
-                                        LatLng place = LatLng(
-                                            placesList[index]["location"]
-                                                ["lat"],
-                                            placesList[index]["location"]
-                                                ["lng"]);
+                                return GestureDetector(
+                                  onTap: () {
+                                    print(
+                                      'lat in destination ->${placesList[index]["location"]["lat"]} lng ->${placesList[index]["location"]["lng"]}',
+                                    );
+                                    LatLng place = LatLng(
+                                        placesList[index]["location"]["lat"],
+                                        placesList[index]["location"]["lng"]);
 
-                                        String address =
-                                            placesList[index]["address"];
-                                        Provider.of<DestinationMarkers>(context,
-                                                listen: false)
-                                            .updateDestinationMarkers(
-                                                place, address);
-                                        print("place info:->$place");
-                                        Get.back();
-                                        onPlaceSelect();
-                                      },
-                                      child: Icon(Icons.location_on)),
-                                  title:
-                                      Text('${placesList[index]["address"]}'),
+                                    String address =
+                                        placesList[index]["address"];
+                                    Provider.of<DestinationMarkers>(context,
+                                            listen: false)
+                                        .updateDestinationMarkers(
+                                            place, address);
+                                    print("place info:->$place");
+                                    Get.back();
+                                    onPlaceSelect();
+                                  },
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.share_location_outlined,
+                                      color: Colors.blueGrey.shade800,
+                                    ),
+                                    title: Text(
+                                      '${placesList[index]["address"]}',
+                                      style: GoogleFonts.openSans(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
                                 );
                               },
                             ),

@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:images_picker/images_picker.dart';
 import 'package:get/get.dart';
 import 'package:app/Data/image.dart';
@@ -516,23 +517,16 @@ class _SignUpState extends State<SignUp> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            'Already have an Account ?',
-                            style: TextStyle(
-                              fontSize: 16,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
+                          Text('Already have an Account ?',
+                              style: GoogleFonts.roboto(
+                                  color: Colors.black, fontSize: 16)),
+                          GestureDetector(
+                            onTap: () {
                               Get.off(SignIn(app: app));
                             },
-                            child: Text(
-                              ' Sign In',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.blue,
-                              ),
-                            ),
+                            child: Text(' Sign In',
+                                style: GoogleFonts.roboto(
+                                    color: Colors.blue, fontSize: 16)),
                           ),
                         ],
                       ),
