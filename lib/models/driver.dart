@@ -12,6 +12,7 @@ class Driver {
   String cab_model;
   String cab_number;
   String rating;
+  String driver_token;
   Driver(
       {required this.cabimage,
       required this.uid,
@@ -21,6 +22,7 @@ class Driver {
       required this.cab_model,
       required this.cab_number,
       required this.rating,
+      required this.driver_token,
       this.timetoreach,
       this.lat,
       this.long});

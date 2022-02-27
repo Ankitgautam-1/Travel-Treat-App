@@ -230,313 +230,328 @@ class _SignUpState extends State<SignUp> {
             },
           ),
         ),
-        body: SingleChildScrollView(
-          child: Container(
-            width: MediaQuery.of(context).size.width,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  height: 20,
-                ),
-                Column(
-                  children: [
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Wrap(
-                            children: [
-                              Text(
-                                "Let\'s Ride with\nTravel Treat",
-                                style: TextStyle(
-                                    fontSize: 24, fontWeight: FontWeight.w500),
-                              )
-                            ],
-                          ),
-                          SizedBox(
-                            height: 100,
-                            width: 100,
-                            child: Stack(
-                              clipBehavior: Clip.antiAlias,
-                              fit: StackFit.expand,
+        body: GestureDetector(
+          onTap: () {
+            //to hide the keyboard by unfocusing on textformfield when user taps on screen
+            FocusScope.of(context).unfocus();
+          },
+          child: SingleChildScrollView(
+            child: Container(
+              width: MediaQuery.of(context).size.width,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Column(
+                    children: [
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Wrap(
                               children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: Colors.grey.withOpacity(0.19),
-                                          spreadRadius: 0,
-                                          blurRadius: 50,
-                                          offset: Offset(0, 0))
-                                    ],
-                                  ),
-                                  child: !image
-                                      ? CircleAvatar(
-                                          backgroundImage: AssetImage(
-                                              'asset/images/profile_pic.jpg'),
-                                          backgroundColor: Colors.grey[200])
-                                      : CircleAvatar(
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(58),
-                                            child: SizedBox(
-                                              width: 116,
-                                              height: 116,
-                                              child: Image.file(
-                                                _image,
-                                                fit: BoxFit.cover,
-                                                width: 116,
-                                                height: 116,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: SizedBox(
-                                    height: 38,
-                                    width: 38,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        padding: EdgeInsets.all(0),
-                                        primary: Colors.black,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(50),
-                                        ),
-                                      ),
-                                      onPressed: () {
-                                        Get.bottomSheet(get());
-                                      },
-                                      child: Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
+                                Text(
+                                  "Let\'s travel with\nTravel Treat",
+                                  style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w500),
                                 )
                               ],
                             ),
-                          ),
-                        ])
-                  ],
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                Form(
-                  key: _formkey,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 320,
-                        child: TextFormField(
-                          controller: _username,
-                          validator: (val) => val!.length > 5
-                              ? null
-                              : "Username should be at least 6 charcter",
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          cursorColor: Colors.grey[600],
-                          decoration: InputDecoration(
-                            prefixIcon:
-                                Icon(Icons.person, color: Colors.black87),
-                            contentPadding: EdgeInsets.all(20),
-                            hintText: "Username",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(width: .6),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  BorderSide(width: 1, color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.03,
-                      ),
-                      Container(
-                        width: 320,
-                        child: TextFormField(
-                          obscureText: isobscure,
-                          controller: _pass,
-                          validator: (val) => val!.length > 6
-                              ? null
-                              : "password should be at least 6 charcter",
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.send,
-                          decoration: InputDecoration(
-                            suffixIcon: IconButton(
-                              icon: FaIcon(
-                                isobscure
-                                    ? FontAwesomeIcons.eye
-                                    : FontAwesomeIcons.eyeSlash,
-                                color: Colors.black87,
+                            SizedBox(
+                              height: 100,
+                              width: 100,
+                              child: Stack(
+                                clipBehavior: Clip.antiAlias,
+                                fit: StackFit.expand,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      boxShadow: [
+                                        BoxShadow(
+                                            color:
+                                                Colors.grey.withOpacity(0.19),
+                                            spreadRadius: 0,
+                                            blurRadius: 50,
+                                            offset: Offset(0, 0))
+                                      ],
+                                    ),
+                                    child: !image
+                                        ? CircleAvatar(
+                                            backgroundImage: AssetImage(
+                                                'asset/images/profile_pic.jpg'),
+                                            backgroundColor: Colors.grey[200])
+                                        : CircleAvatar(
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(58),
+                                              child: SizedBox(
+                                                width: 116,
+                                                height: 116,
+                                                child: Image.file(
+                                                  _image,
+                                                  fit: BoxFit.cover,
+                                                  width: 116,
+                                                  height: 116,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: SizedBox(
+                                      height: 38,
+                                      width: 38,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          padding: EdgeInsets.all(0),
+                                          primary: Colors.black,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(50),
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          Get.bottomSheet(get());
+                                        },
+                                        child: Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                ],
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  isobscure = !isobscure;
-                                });
-                              },
                             ),
-                            prefixIcon:
-                                Icon(Icons.vpn_key, color: Colors.black87),
-                            contentPadding: EdgeInsets.all(20),
-                            hintText: "Password",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(width: .6),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  BorderSide(width: 1, color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.03,
-                      ),
-                      Container(
-                        width: 320,
-                        child: TextFormField(
-                          controller: _email,
-                          validator: (val) =>
-                              val!.isEmail ? null : "Enter valide email",
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            prefixIcon:
-                                Icon(Icons.email, color: Colors.black87),
-                            contentPadding: EdgeInsets.all(20),
-                            hintText: "Email",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(width: .6),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  BorderSide(width: 1, color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.03,
-                      ),
-                      Container(
-                        width: 320,
-                        child: TextFormField(
-                          controller: _ph,
-                          validator: (val) => val!.length == 10
-                              ? null
-                              : "Phone Number should be 10 digits",
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.phone_android_rounded,
-                                color: Colors.black87),
-                            contentPadding: EdgeInsets.all(20),
-                            hintText: "Phone number",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(width: .6),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  BorderSide(width: 1, color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.03,
-                      ),
-                      Container(
-                        width: 320,
-                        child: TextFormField(
-                          controller: _emph,
-                          validator: (val) => val!.length == 10
-                              ? null
-                              : "Phone Number should be 10 digits",
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.phone_android_rounded,
-                                color: Colors.black87),
-                            contentPadding: EdgeInsets.all(20),
-                            hintText: "Emergency phone number",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(width: .6),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  BorderSide(width: 1, color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.03,
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          primary: Color.fromRGBO(46, 46, 46, 1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 50,
-                            vertical: 12,
-                          ),
-                        ),
-                        onPressed: _create,
-                        child: Text(
-                          'Create Account',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 35,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Already have an Account ?',
-                              style: GoogleFonts.roboto(
-                                  color: Colors.black, fontSize: 16)),
-                          GestureDetector(
-                            onTap: () {
-                              Get.off(SignIn(app: app));
-                            },
-                            child: Text(' Sign In',
-                                style: GoogleFonts.roboto(
-                                    color: Colors.blue, fontSize: 16)),
-                          ),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 15,
-                      ),
+                          ])
                     ],
                   ),
-                ),
-              ],
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Form(
+                    key: _formkey,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 320,
+                          child: TextFormField(
+                            controller: _username,
+                            validator: (val) => val!.length > 5
+                                ? null
+                                : "Username should be at least 6 charcter",
+                            keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
+                            cursorColor: Colors.grey[600],
+                            decoration: InputDecoration(
+                              prefixIcon:
+                                  Icon(Icons.person, color: Colors.black87),
+                              contentPadding: EdgeInsets.all(20),
+                              hintText: "Username",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(width: .6),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(width: 1, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.03,
+                        ),
+                        Container(
+                          width: 320,
+                          child: TextFormField(
+                            obscureText: isobscure,
+                            controller: _pass,
+                            validator: (val) => val!.length > 6
+                                ? null
+                                : "password should be at least 6 charcter",
+                            keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.send,
+                            decoration: InputDecoration(
+                              suffixIcon: IconButton(
+                                icon: FaIcon(
+                                  isobscure
+                                      ? FontAwesomeIcons.eye
+                                      : FontAwesomeIcons.eyeSlash,
+                                  color: Colors.black87,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    isobscure = !isobscure;
+                                  });
+                                },
+                              ),
+                              prefixIcon:
+                                  Icon(Icons.vpn_key, color: Colors.black87),
+                              contentPadding: EdgeInsets.all(20),
+                              hintText: "Password",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(width: .6),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(width: 1, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.03,
+                        ),
+                        Container(
+                          width: 320,
+                          child: TextFormField(
+                            controller: _email,
+                            validator: (val) =>
+                                val!.isEmail ? null : "Enter valide email",
+                            keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              prefixIcon:
+                                  Icon(Icons.email, color: Colors.black87),
+                              contentPadding: EdgeInsets.all(20),
+                              hintText: "Email",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(width: .6),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(width: 1, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.03,
+                        ),
+                        Container(
+                          width: 320,
+                          child: TextFormField(
+                            controller: _ph,
+                            validator: (val) => val!.length == 10
+                                ? null
+                                : "Phone Number should be 10 digits",
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              prefixIcon: Icon(Icons.phone_android_rounded,
+                                  color: Colors.black87),
+                              contentPadding: EdgeInsets.all(20),
+                              hintText: "Phone number",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(width: .6),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(width: 1, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.03,
+                        ),
+                        Container(
+                          width: 320,
+                          child: TextFormField(
+                            controller: _emph,
+                            validator: (val) => val!.length == 10
+                                ? null
+                                : "Phone Number should be 10 digits",
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              prefixIcon: Icon(Icons.phone_android_rounded,
+                                  color: Colors.black87),
+                              contentPadding: EdgeInsets.all(20),
+                              hintText: "Emergency phone number",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(width: .6),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(width: 1, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.03,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Flex(direction: Axis.horizontal, children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  primary: Color.fromRGBO(46, 46, 46, 1),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 50,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                onPressed: _create,
+                                child: Text(
+                                  'Create Account',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            )
+                          ]),
+                        ),
+                        SizedBox(
+                          height: 35,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Already have an Account ?',
+                                style: GoogleFonts.roboto(
+                                    color: Colors.black, fontSize: 16)),
+                            GestureDetector(
+                              onTap: () {
+                                Get.off(SignIn(app: app));
+                              },
+                              child: Text(' Sign In',
+                                  style: GoogleFonts.roboto(
+                                      color: Colors.blue, fontSize: 16)),
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 15,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

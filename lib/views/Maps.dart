@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:ffi';
-import 'dart:io';
+
 import 'dart:math';
 import 'package:animations/animations.dart';
 import 'package:app/Data/DirectionProvider.dart';
@@ -76,10 +74,13 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   );
   bool cab_details = false;
   bool driver_details = false;
+  String driver_token = "";
   List l1 = [];
+  bool reaching_destination = false;
   List<Marker> placeMarker = [];
   late GoogleMapController newmapcontroller;
   LatLng? curloc;
+  late StreamSubscription<dynamic> driver_location_sub;
   Completer<GoogleMapController> mapcontroller = Completer();
   Map t1 = {};
   late Position currentPosition;
@@ -109,7 +110,21 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
   String pickup_long = "";
   String destination_lat = "";
   String destination_long = "";
-  late Stream timer_stream;
+  String user_pickup_lat = "";
+  String user_image = "";
+  String user_name = "";
+  String user_phone = "";
+  String user_pickup_long = "";
+  String user_destination_lat = "";
+  String user_destination_long = "";
+  String user_pickup_address = "";
+  String user_destination_address = "";
+  String user_trip_charge = "";
+  String user_trip_distance = "";
+  String user_trip_time = "";
+  String user_uid = "";
+  String cab_type = "";
+  late Timer timer;
   late StreamSubscription<dynamic> drivers_positions_stream;
   late LatLng pickup;
   Future<void> setupnotification() async {
@@ -132,12 +147,15 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
           Navigator.of(context, rootNavigator: true).pop('dialog');
         }
       } else if (message.data["type"] == "Ride Accept") {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setBool("isdriverpickup", true);
+        prefs.setBool("reaching_destination", false);
         setState(() {
           while (Navigator.of(context, rootNavigator: true).canPop()) {
             Navigator.of(context, rootNavigator: true).pop('dialog');
           }
           trip_details = true;
-
+          reaching_destination = false;
           placeMarker.add(Marker(
               markerId: MarkerId("Driver_location"),
               icon: BitmapDescriptor.defaultMarkerWithHue(
@@ -154,15 +172,17 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
           ttr = ((int.tryParse(message.data["time"]))! / 60).ceil().toString();
         }
         Driver driver = Driver(
-            uid: message.data["uid"],
-            username: message.data["username"],
-            imageurl: message.data["imageurl"],
-            timetoreach: ttr,
-            phone: message.data["phone"],
-            cabimage: message.data["cab_image"],
-            cab_model: message.data["cab_model"],
-            cab_number: message.data["cab_number"],
-            rating: message.data["rating"]);
+          uid: message.data["uid"],
+          username: message.data["username"],
+          imageurl: message.data["imageurl"],
+          timetoreach: ttr,
+          phone: message.data["phone"],
+          cabimage: message.data["cab_image"],
+          cab_model: message.data["cab_model"],
+          cab_number: message.data["cab_number"],
+          rating: message.data["rating"],
+          driver_token: message.data["drivers_token"],
+        );
 
         print(
             "driverDetails ${driver.username} ${driver.imageurl} ${driver.phone}");
@@ -171,29 +191,51 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
 
         Get.snackbar("Got The Ride", "The driver we be avaible soon",
             duration: Duration(seconds: 4));
-
+        timer.cancel();
         while (Navigator.of(context, rootNavigator: true).canPop()) {
           Navigator.of(context, rootNavigator: true).pop('dialog');
         }
-        FirebaseFirestore.instance
-            .collection('Test_Loc')
-            .doc(message.data["uid"])
+        driver_location_sub = FirebaseFirestore.instance
+            .collection('Trip_in_progress')
+            .doc(Provider.of<AccountProvider>(context, listen: false)
+                .userAccount
+                .Uid)
             .snapshots()
             .listen((event) {
-          GeoPoint geoPoint = event.data()!["position"]["geopoint"];
-          setState(() {
-            placeMarker.removeWhere((element) {
-              return element.markerId.value == "Driver_location";
+          if (event.data() != null) {
+            GeoPoint geoPoint = event.data()!["position"]["geopoint"];
+            setState(() {
+              placeMarker.removeWhere((element) {
+                return element.markerId.value == "Driver_location";
+              });
+              placeMarker.add(Marker(
+                  markerId: MarkerId("Driver_location"),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueMagenta),
+                  infoWindow: InfoWindow(title: "Drivers Loc"),
+                  position: LatLng(geoPoint.latitude, geoPoint.longitude)));
             });
-            placeMarker.add(Marker(
-                markerId: MarkerId("Driver_location"),
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueMagenta),
-                infoWindow: InfoWindow(title: "Drivers Loc"),
-                position: LatLng(geoPoint.latitude, geoPoint.longitude)));
-          });
-          print("geoPoint lat ${geoPoint.latitude}");
-          print("geoPoint long ${geoPoint.longitude}");
+            print("geoPoint lat ${geoPoint.latitude}");
+            print("geoPoint long ${geoPoint.longitude}");
+          }
+        });
+      } else if (message.data["type"] == "Cancel Trip") {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setBool("isdriverpickup", false);
+        Get.snackbar("Trip Cancelled", "The driver has cancelled the trip");
+        setState(() {
+          placeMarker.removeWhere(
+              (element) => element.markerId.value == "Driver_location");
+          cab_details = true;
+          driver_details = false;
+          trip_details = false;
+          driver_location_sub.cancel();
+        });
+      } else if (message.data["type"] == "Start Trip") {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setBool("reaching_destination", true);
+        setState(() {
+          reaching_destination = true;
         });
       } else {
         // Navigator.of(context).pop(true);
@@ -355,10 +397,272 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     );
   }
 
+  Future<void> checkisinmidtrip() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    print("checkisinmidtrip");
+    var response = prefs.getBool("isdriverpickup");
+    var reaching = prefs.getBool("reaching_destination") ?? false;
+    print("response :${response}");
+
+    if (response != null && response == true) {
+      _firestore
+          .collection('Trip_in_progress')
+          .doc(Provider.of<AccountProvider>(context, listen: false)
+              .userAccount
+              .Uid)
+          .get()
+          .then((value) async {
+        print("the trip data :${value.data()}");
+        Get.snackbar("trip data",
+            "${value.data()!['carDetails']['usersDetails']['user_name']}");
+        if (value.data() != null) {
+          print("Updating all the value");
+          setState(() {
+            reaching_destination = reaching;
+            trip_details = true;
+            user_pickup_lat =
+                value.data()!['carDetails']['usersDetails']['user_pickup_lat'];
+            user_image =
+                value.data()!['carDetails']['usersDetails']['user_image'];
+            user_name =
+                value.data()!['carDetails']['usersDetails']['user_name'];
+            user_phone =
+                value.data()!['carDetails']['usersDetails']['user_phone'];
+            user_pickup_lat =
+                value.data()!['carDetails']['usersDetails']['user_pickup_lat'];
+            user_pickup_long =
+                value.data()!['carDetails']['usersDetails']['user_pickup_long'];
+            user_destination_lat = value.data()!['carDetails']['usersDetails']
+                ['user_destination_lat'];
+            user_destination_long = value.data()!['carDetails']['usersDetails']
+                ['user_destination_long'];
+            user_pickup_address = value.data()!['carDetails']['usersDetails']
+                ['user_pickup_address'];
+            user_destination_address = value.data()!['carDetails']
+                ['usersDetails']['user_destination_address'];
+            user_trip_charge =
+                value.data()!['carDetails']['usersDetails']['user_trip_charge'];
+            user_trip_distance = value.data()!['carDetails']['usersDetails']
+                ['user_trip_distance'];
+            user_trip_time =
+                value.data()!['carDetails']['usersDetails']['user_trip_time'];
+            user_uid = value.data()!['carDetails']['usersDetails']['user_uid'];
+            selectedCar =
+                value.data()!['carDetails']['usersDetails']['cab_type'];
+            pickup = LatLng(double.tryParse(user_pickup_lat)!,
+                double.tryParse(user_pickup_long)!);
+            LatLng destination = LatLng(double.tryParse(user_destination_lat)!,
+                double.tryParse(user_destination_long)!);
+            placeMarker.add(
+              Marker(
+                markerId: MarkerId("Pick_up"),
+                infoWindow: InfoWindow(title: "Pick up place"),
+                position: pickup,
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueGreen),
+              ),
+            );
+            placeMarker.add(
+              Marker(
+                markerId: MarkerId("Destination"),
+                infoWindow: InfoWindow(title: "Destination place"),
+                position: destination,
+              ),
+            );
+            print("user_uid :${user_uid}");
+            print("user_trip_charge :${user_trip_charge}");
+            print("user_trip_distance :${user_trip_distance}");
+            print("user_trip_time :${user_trip_time}");
+            print("user_pickup_lat :${user_pickup_lat}");
+            print("user_pickup_long :${user_pickup_long}");
+            print("user_destination_lat :${user_destination_lat}");
+            print("user_destination_long :${user_destination_long}");
+            print("user_pickup_address :${user_pickup_address}");
+            print("user_destination_address :${user_destination_address}");
+            print("user_image :${user_image}");
+            print("user_name :${user_name}");
+            print("user_phone :${user_phone}");
+            print("selected :${selectedCar}");
+            print("pickup :${pickup}");
+
+            var driver_uid = value.data()!['uid'];
+
+            var driver_username = value.data()!['username'];
+            var driver_phone = value.data()!['driverDetails']['phone'];
+            var driver_profile = value.data()!['driverDetails']['imageurl'];
+            var driver_raring = value.data()!['driverDetails']['rating'];
+            var driver_cabimage = value.data()!['carDetails']['carImage'];
+            var driver_cabmodel = value.data()!['carDetails']['carModel'];
+            var driver_carnumber = value.data()!['carDetails']['carNumber'];
+            var driver_token = value.data()!['driverDetails']['driver_token'];
+            Driver driver = Driver(
+              cabimage: driver_cabimage,
+              uid: driver_uid,
+              username: driver_username,
+              imageurl: driver_profile,
+              phone: driver_phone,
+              cab_model: driver_cabmodel,
+              cab_number: driver_carnumber,
+              rating: driver_raring,
+              driver_token: driver_token,
+            );
+            Provider.of<DriverProvider>(context, listen: false)
+                .updateDriver(driver);
+          });
+          var collectionReference = _firestore.collection('Trip_in_progress');
+          try {
+            String token = await FirebaseMessaging.instance.getToken() ?? "";
+            driver_location_sub = FirebaseFirestore.instance
+                .collection('Trip_in_progress')
+                .doc(Provider.of<AccountProvider>(context, listen: false)
+                    .userAccount
+                    .Uid)
+                .snapshots()
+                .listen((event) {
+              if (event.data() != null) {
+                GeoPoint geoPoint = event.data()!["position"]["geopoint"];
+                setState(() {
+                  placeMarker.removeWhere((element) {
+                    return element.markerId.value == "Driver_location";
+                  });
+                  placeMarker.add(Marker(
+                      markerId: MarkerId("Driver_location"),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueMagenta),
+                      infoWindow: InfoWindow(title: "Drivers Loc"),
+                      position: LatLng(geoPoint.latitude, geoPoint.longitude)));
+                });
+                print("geoPoint lat ${geoPoint.latitude}");
+                print("geoPoint long ${geoPoint.longitude}");
+              }
+            });
+          } catch (e) {
+            print("Error: $e");
+          }
+          Directions directions = Directions(
+              endpoint: "FindDrivingPath",
+              origin: "$user_pickup_lat,$user_pickup_long",
+              destination: "$user_destination_lat,$user_destination_long",
+              context: context);
+          try {
+            poly = await directions.getDirections();
+            print("polyline direction:${poly}");
+
+            print("poly:$poly");
+            if (poly != null) {
+              setState(() {
+                cab_details = true;
+                _polylines = {
+                  Polyline(
+                      width: 3,
+                      polylineId: PolylineId("Travel_path"),
+                      color: Colors.black,
+                      jointType: JointType.bevel,
+                      points: Provider.of<DirectionsProvider>(context,
+                              listen: false)
+                          .cordinates_collections!)
+                };
+
+                // CameraPosition
+                CameraPosition cameraPosition =
+                    CameraPosition(target: pickup, zoom: 18);
+                newmapcontroller.animateCamera(
+                  CameraUpdate.newLatLngBounds(
+                      Provider.of<DirectionsProvider>(context, listen: false)
+                          .bounds!,
+                      65.0),
+                );
+                Provider.of<PickupMarkers>(context, listen: false)
+                    .updatePickupMarkers(
+                        LatLng(double.tryParse(user_pickup_lat)!,
+                            double.tryParse(user_pickup_long)!),
+                        user_pickup_address);
+                Provider.of<DestinationMarkers>(context, listen: false)
+                    .updateDestinationMarkers(
+                        LatLng(double.tryParse(user_destination_lat)!,
+                            double.tryParse(user_destination_long)!),
+                        user_destination_address);
+                pickup = LatLng(double.tryParse(user_pickup_lat)!,
+                    double.tryParse(user_pickup_long)!);
+              });
+              setState(() {
+                cab_details = true;
+                driver_details = true;
+                trip_details = true;
+              });
+            } else {
+              setState(() {
+                cab_details = false;
+                _polylines = {};
+                Provider.of<DestinationMarkers>(context, listen: false)
+                    .updateDestinationMarkers(null, null);
+                print("place marker ${placeMarker}");
+                placeMarker.removeWhere(
+                    (element) => element.markerId.value == "Destination");
+                CameraPosition cameraPosition =
+                    CameraPosition(target: pickup, zoom: 18);
+                newmapcontroller.animateCamera(
+                    CameraUpdate.newCameraPosition(cameraPosition));
+                showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    useSafeArea: true,
+                    builder: (builder) {
+                      return CupertinoAlertDialog(
+                        title: Text(
+                          "Location Error",
+                          style: GoogleFonts.montserrat(
+                              fontSize: 20, fontWeight: FontWeight.w400),
+                        ),
+                        content: Container(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Image.asset(
+                                  "asset/images/Location_error.png",
+                                  height: 100,
+                                  width: 100,
+                                ),
+                                Text(
+                                  "Please try valid location",
+                                  style: GoogleFonts.montserrat(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        actions: [
+                          TextButton.icon(
+                            icon: Icon(Icons.close),
+                            label: Text("Close"),
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                          )
+                        ],
+                      );
+                    });
+                // CameraPosition
+              });
+            }
+          } catch (e) {
+            print("Error: $e");
+          }
+        }
+      });
+    }
+  }
+
   @override
   void initState() {
     setupnotification();
     getData();
+    checkisinmidtrip();
     super.initState();
   }
 
@@ -383,7 +687,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     }
     var collectionReference = _firestore.collection('Test_Loc');
     var geoRef = geo.collection(collectionRef: collectionReference);
-    Userloc = Geolocator.getPositionStream();
+    // Userloc = Geolocator.getPositionStream();
     GeoFirePoint current =
         geo.point(latitude: position.latitude, longitude: position.longitude);
 
@@ -402,6 +706,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
             String driversuid = queryLoc.elementAt(i).data()!["uid"];
             String token = queryLoc.elementAt(i).data()!["token"];
             Map t1 = queryLoc.elementAt(i).data()!["driverDetails"];
+
             List temp_list = [
               t1['imageurl'],
               t1['username'],
@@ -420,7 +725,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
           driver_details = true;
         });
 
-        // subs.cancel();
+        subs.cancel();
       },
       onDone: () {
         print('The streaming is complelte');
@@ -437,6 +742,9 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
     if (getloc != null) {
       getloc!.cancel();
     }
+    try {
+      driver_location_sub.cancel();
+    } catch (e) {}
 
     super.dispose();
   }
@@ -818,10 +1126,8 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
             ),
           ),
         ),
-        body: SingleChildScrollView(
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.955,
-            width: MediaQuery.of(context).size.width,
+        body: Flex(direction: Axis.vertical, children: [
+          Expanded(
             child: Stack(
               children: [
                 Container(
@@ -2184,7 +2490,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                 height: 20,
                                               ),
                                               Container(
-                                                height: 280,
+                                                height: 300,
                                                 width: MediaQuery.of(context)
                                                         .size
                                                         .width *
@@ -2203,716 +2509,1073 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                           )
                                                         ],
                                                       )
-                                                    : ListView.builder(
-                                                        itemCount: l1.length,
-                                                        itemBuilder:
-                                                            (BuildContext
-                                                                    context,
-                                                                int index) {
-                                                          if (l1.length == 0) {
-                                                            return Center(
-                                                              child: Text(
-                                                                  "No Drivers found near by",
-                                                                  style: GoogleFonts.ubuntu(
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600)),
-                                                            );
-                                                          } else {
-                                                            return Material(
-                                                              color:
-                                                                  Colors.white,
-                                                              child: InkWell(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                                splashColor:
-                                                                    Colors.blueGrey[
-                                                                        100],
-                                                                onTap:
-                                                                    () async {
-                                                                  String?
-                                                                      usertoken =
-                                                                      await FirebaseMessaging
-                                                                          .instance
-                                                                          .getToken();
-                                                                  String pickup = Provider.of<PickupMarkers>(context, listen: false)
-                                                                              .places ==
-                                                                          null
-                                                                      ? Provider.of<UserData>(
-                                                                              context,
-                                                                              listen:
-                                                                                  false)
-                                                                          .pickuplocation!
-                                                                          .placeAddres
-                                                                          .toString()
-                                                                          .substring(
-                                                                              0,
-                                                                              26)
-                                                                      : Provider.of<PickupMarkers>(
-                                                                              context,
-                                                                              listen:
-                                                                                  false)
-                                                                          .address
-                                                                          .toString()
-                                                                          .substring(
-                                                                              0,
-                                                                              26);
-                                                                  String destination = Provider.of<
-                                                                              DestinationMarkers>(
-                                                                          context,
-                                                                          listen:
-                                                                              false)
-                                                                      .address
-                                                                      .toString()
-                                                                      .substring(
-                                                                          0,
-                                                                          26);
-                                                                  String travel_time = Provider.of<
-                                                                              DirectionsProvider>(
-                                                                          context,
-                                                                          listen:
-                                                                              false)
-                                                                      .time
-                                                                      .toString()
-                                                                      .substring(
-                                                                          0,
-                                                                          Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4
-                                                                              ? 4
-                                                                              : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length);
-
-                                                                  Position
-                                                                      userLocation =
-                                                                      await Geolocator.getCurrentPosition(
-                                                                          desiredAccuracy:
-                                                                              LocationAccuracy.high);
-                                                                  String travel_distance = Provider.of<
-                                                                              DirectionsProvider>(
-                                                                          context,
-                                                                          listen:
-                                                                              false)
-                                                                      .distance
-                                                                      .toString()
-                                                                      .substring(
-                                                                          0,
-                                                                          Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4
-                                                                              ? 4
-                                                                              : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length);
-                                                                  Msg().sendRidereq(
-                                                                      userLocation,
-                                                                      l1[index][3].toString(),
-                                                                      Provider.of<AccountProvider>(context, listen: false).userAccount.Uid,
-                                                                      Provider.of<AccountProvider>(context, listen: false).userAccount.Username,
-                                                                      Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address,
-                                                                      Provider.of<DestinationMarkers>(context, listen: false).address,
-                                                                      usertoken!,
-                                                                      travel_distance,
-                                                                      travel_time,
-                                                                      Provider.of<AccountProvider>(context, listen: false).userAccount.Ph,
-                                                                      pickup_lat,
-                                                                      pickup_long,
-                                                                      destination_lat,
-                                                                      destination_long,
-                                                                      "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}");
-                                                                  showDialog(
-                                                                      context:
-                                                                          context,
-                                                                      builder:
-                                                                          (context) {
-                                                                        timer_stream = Stream.periodic(
-                                                                            Duration(seconds: 1),
-                                                                            (time) {
-                                                                          return time;
-                                                                        });
-                                                                        Future.delayed(
-                                                                            Duration(seconds: 201),
-                                                                            () {
-                                                                          while (
-                                                                              Navigator.of(context, rootNavigator: true).canPop()) {
-                                                                            Navigator.of(context, rootNavigator: true).pop('dialog');
-                                                                          }
-                                                                        });
-                                                                        return AlertDialog(
-                                                                          content: StreamBuilder(
-                                                                              initialData: 0,
-                                                                              stream: timer_stream,
-                                                                              builder: (builder, ctx) {
-                                                                                return SingleChildScrollView(
-                                                                                  child: Container(
-                                                                                    color: Colors.white,
-                                                                                    padding: EdgeInsets.all(4),
-                                                                                    width: MediaQuery.of(context).size.width * 0.75,
-                                                                                    height: min(
-                                                                                      350,
-                                                                                      MediaQuery.of(context).size.height * 0.5,
-                                                                                    ),
-                                                                                    child: Column(
-                                                                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                                                      children: [
-                                                                                        LinearProgressIndicator(
-                                                                                          value: (double.tryParse(ctx.data.toString())! / 201),
-                                                                                          backgroundColor: Colors.grey.shade400,
-                                                                                          valueColor: AlwaysStoppedAnimation(Colors.grey.shade700),
-                                                                                        ),
-                                                                                        Row(
-                                                                                          mainAxisAlignment: MainAxisAlignment.start,
-                                                                                          children: [
-                                                                                            CircularProfileAvatar(
-                                                                                              l1[index][0].toString(),
-                                                                                              imageFit: BoxFit.cover,
-                                                                                              radius: 45,
-                                                                                              cacheImage: true,
-                                                                                              initialsText: Text(l1[index][2].toString().substring(0, 1)),
-                                                                                            ),
-                                                                                            SizedBox(
-                                                                                              width: 10,
-                                                                                            ),
-                                                                                            Column(
-                                                                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                                                                              children: [
-                                                                                                Text(
-                                                                                                  l1[index][1],
-                                                                                                  overflow: TextOverflow.ellipsis,
-                                                                                                  style: TextStyle(color: Colors.grey.shade800, fontSize: 18, fontWeight: FontWeight.w600),
-                                                                                                ),
-                                                                                                Text(
-                                                                                                  "$travel_distance Km | $travel_time Min",
-                                                                                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w300),
-                                                                                                ),
-                                                                                              ],
-                                                                                            )
-                                                                                          ],
-                                                                                        ),
-                                                                                        Text(
-                                                                                          "Pickup",
-                                                                                          textAlign: TextAlign.center,
-                                                                                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-                                                                                        ),
-                                                                                        SingleChildScrollView(
-                                                                                          scrollDirection: Axis.horizontal,
-                                                                                          child: Text(
-                                                                                            pickup,
-                                                                                            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
-                                                                                          ),
-                                                                                        ),
-                                                                                        Text(
-                                                                                          "Destination",
-                                                                                          textAlign: TextAlign.center,
-                                                                                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-                                                                                        ),
-                                                                                        SingleChildScrollView(
-                                                                                          scrollDirection: Axis.horizontal,
-                                                                                          child: Text(
-                                                                                            destination,
-                                                                                            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
-                                                                                          ),
-                                                                                        ),
-                                                                                        SizedBox(
-                                                                                          height: 4,
-                                                                                        ),
-                                                                                        SlideAction(
-                                                                                          submittedIcon: Icon(
-                                                                                            Iconsax.close_circle4,
-                                                                                            size: 15,
-                                                                                            color: Colors.red.shade700,
-                                                                                          ),
-                                                                                          text: "Slide to cancel",
-                                                                                          textStyle: TextStyle(color: Colors.grey.shade400),
-                                                                                          sliderButtonIconPadding: 9,
-                                                                                          height: 40,
-                                                                                          sliderButtonIconSize: 20,
-                                                                                          reversed: true,
-                                                                                          sliderButtonIcon: Icon(
-                                                                                            Iconsax.close_circle4,
-                                                                                            size: 15,
-                                                                                            color: Colors.white,
-                                                                                          ),
-                                                                                          onSubmit: () {
-                                                                                            Future.delayed(Duration(seconds: 1), () {
-                                                                                              Msg().sendRideCancelReq(l1[index][3].toString());
-                                                                                              while (Navigator.of(context, rootNavigator: true).canPop()) {
-                                                                                                Navigator.of(context, rootNavigator: true).pop('dialog');
-                                                                                              }
-                                                                                            });
-                                                                                          },
-                                                                                          innerColor: Colors.red.shade600,
-                                                                                          outerColor: Colors.white,
-                                                                                        ),
-                                                                                      ],
-                                                                                    ),
-                                                                                  ),
-                                                                                );
-                                                                              }),
-                                                                        );
-                                                                      });
-                                                                },
-                                                                child:
-                                                                    Container(
-                                                                  padding: const EdgeInsets
-                                                                          .symmetric(
-                                                                      vertical:
-                                                                          3),
-                                                                  child: Row(
-                                                                    mainAxisAlignment:
-                                                                        MainAxisAlignment
-                                                                            .spaceBetween,
-                                                                    children: [
-                                                                      Row(
-                                                                        children: [
-                                                                          ClipRRect(
-                                                                            borderRadius:
-                                                                                BorderRadius.circular(25),
-                                                                            child:
-                                                                                Image.network(
-                                                                              l1[index][0],
-                                                                              width: 50,
-                                                                              height: 50,
-                                                                              fit: BoxFit.cover,
-                                                                            ),
-                                                                          ),
-                                                                          SizedBox(
-                                                                            width:
-                                                                                10,
-                                                                          ),
-                                                                          Text(
-                                                                            l1[index][1],
-                                                                            textAlign:
-                                                                                TextAlign.left,
-                                                                            style:
-                                                                                GoogleFonts.dmSans(fontSize: 17),
-                                                                          ),
-                                                                        ],
-                                                                      ),
-                                                                      Container(
-                                                                        width:
-                                                                            50,
+                                                    : Column(
+                                                        children: [
+                                                          SizedBox(
+                                                            height: 250,
+                                                            child: ListView
+                                                                .builder(
+                                                                    itemCount: l1
+                                                                        .length,
+                                                                    itemBuilder:
+                                                                        (BuildContext
+                                                                                context,
+                                                                            int index) {
+                                                                      return Material(
+                                                                        color: Colors
+                                                                            .white,
                                                                         child:
-                                                                            Row(
-                                                                          mainAxisAlignment:
-                                                                              MainAxisAlignment.start,
-                                                                          children: [
-                                                                            Icon(
-                                                                              LineIcons.starAlt,
-                                                                              color: Colors.amber,
+                                                                            InkWell(
+                                                                          borderRadius:
+                                                                              BorderRadius.circular(10),
+                                                                          splashColor:
+                                                                              Colors.blueGrey[100],
+                                                                          onTap:
+                                                                              () async {
+                                                                            String?
+                                                                                usertoken =
+                                                                                await FirebaseMessaging.instance.getToken();
+                                                                            String pickup = Provider.of<PickupMarkers>(context, listen: false).places == null
+                                                                                ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres.toString().substring(0, 26)
+                                                                                : Provider.of<PickupMarkers>(context, listen: false).address.toString().substring(0, 26);
+                                                                            String
+                                                                                destination =
+                                                                                Provider.of<DestinationMarkers>(context, listen: false).address.toString().substring(0, 26);
+                                                                            String
+                                                                                travel_time =
+                                                                                Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length);
+
+                                                                            Position
+                                                                                userLocation =
+                                                                                await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+                                                                            String
+                                                                                travel_distance =
+                                                                                Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length);
+                                                                            Msg().sendRidereq(
+                                                                              userLocation,
+                                                                              l1[index][3].toString(),
+                                                                              Provider.of<AccountProvider>(context, listen: false).userAccount.Uid,
+                                                                              Provider.of<AccountProvider>(context, listen: false).userAccount.Username,
+                                                                              Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address,
+                                                                              Provider.of<DestinationMarkers>(context, listen: false).address,
+                                                                              usertoken!,
+                                                                              travel_distance,
+                                                                              travel_time,
+                                                                              Provider.of<AccountProvider>(context, listen: false).userAccount.Ph,
+                                                                              pickup_lat,
+                                                                              pickup_long,
+                                                                              destination_lat,
+                                                                              destination_long,
+                                                                              "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}",
+                                                                              selectedCar,
+                                                                              selectedPayment,
+                                                                            );
+                                                                            showDialog(
+                                                                                context: context,
+                                                                                barrierDismissible: false,
+                                                                                builder: (context) {
+                                                                                  timer = Timer(Duration(seconds: 201), () {
+                                                                                    while (Navigator.of(context, rootNavigator: true).canPop()) {
+                                                                                      Navigator.of(context, rootNavigator: true).pop('dialog');
+                                                                                    }
+                                                                                  });
+
+                                                                                  return AlertDialog(
+                                                                                    content: StreamBuilder(
+                                                                                        initialData: 0,
+                                                                                        stream: Stream.periodic(Duration(seconds: 1), (time) {
+                                                                                          return time;
+                                                                                        }),
+                                                                                        builder: (builder, ctx) {
+                                                                                          return SingleChildScrollView(
+                                                                                            child: Container(
+                                                                                              color: Colors.white,
+                                                                                              padding: EdgeInsets.all(4),
+                                                                                              width: MediaQuery.of(context).size.width * 0.75,
+                                                                                              height: min(
+                                                                                                350,
+                                                                                                MediaQuery.of(context).size.height * 0.5,
+                                                                                              ),
+                                                                                              child: Column(
+                                                                                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                                                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                                children: [
+                                                                                                  LinearProgressIndicator(
+                                                                                                    value: (double.tryParse(ctx.data.toString())! / 201),
+                                                                                                    backgroundColor: Colors.grey.shade400,
+                                                                                                    valueColor: AlwaysStoppedAnimation(Colors.grey.shade700),
+                                                                                                  ),
+                                                                                                  Row(
+                                                                                                    mainAxisAlignment: MainAxisAlignment.start,
+                                                                                                    children: [
+                                                                                                      CircularProfileAvatar(
+                                                                                                        l1[index][0].toString(),
+                                                                                                        imageFit: BoxFit.cover,
+                                                                                                        radius: 45,
+                                                                                                        cacheImage: true,
+                                                                                                        initialsText: Text(l1[index][2].toString().substring(0, 1)),
+                                                                                                      ),
+                                                                                                      SizedBox(
+                                                                                                        width: 10,
+                                                                                                      ),
+                                                                                                      Column(
+                                                                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                                        children: [
+                                                                                                          Text(
+                                                                                                            l1[index][1],
+                                                                                                            overflow: TextOverflow.ellipsis,
+                                                                                                            style: TextStyle(color: Colors.grey.shade800, fontSize: 18, fontWeight: FontWeight.w600),
+                                                                                                          ),
+                                                                                                          Text(
+                                                                                                            "$travel_distance Km | $travel_time Min",
+                                                                                                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w300),
+                                                                                                          ),
+                                                                                                        ],
+                                                                                                      )
+                                                                                                    ],
+                                                                                                  ),
+                                                                                                  Text(
+                                                                                                    "Pickup",
+                                                                                                    textAlign: TextAlign.center,
+                                                                                                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                                                                                                  ),
+                                                                                                  SingleChildScrollView(
+                                                                                                    scrollDirection: Axis.horizontal,
+                                                                                                    child: Text(
+                                                                                                      pickup,
+                                                                                                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                                                                                                    ),
+                                                                                                  ),
+                                                                                                  Text(
+                                                                                                    "Destination",
+                                                                                                    textAlign: TextAlign.center,
+                                                                                                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                                                                                                  ),
+                                                                                                  SingleChildScrollView(
+                                                                                                    scrollDirection: Axis.horizontal,
+                                                                                                    child: Text(
+                                                                                                      destination,
+                                                                                                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                                                                                                    ),
+                                                                                                  ),
+                                                                                                  SizedBox(
+                                                                                                    height: 4,
+                                                                                                  ),
+                                                                                                  SlideAction(
+                                                                                                    submittedIcon: Icon(
+                                                                                                      Iconsax.close_circle4,
+                                                                                                      size: 15,
+                                                                                                      color: Colors.red.shade700,
+                                                                                                    ),
+                                                                                                    text: "Slide to cancel",
+                                                                                                    textStyle: TextStyle(color: Colors.grey.shade400),
+                                                                                                    sliderButtonIconPadding: 9,
+                                                                                                    height: 40,
+                                                                                                    sliderButtonIconSize: 20,
+                                                                                                    reversed: true,
+                                                                                                    sliderButtonIcon: Icon(
+                                                                                                      Iconsax.close_circle4,
+                                                                                                      size: 15,
+                                                                                                      color: Colors.white,
+                                                                                                    ),
+                                                                                                    onSubmit: () {
+                                                                                                      Future.delayed(Duration(seconds: 1), () {
+                                                                                                        Msg().sendRideCancelReq(l1[index][3].toString());
+                                                                                                        while (Navigator.of(context, rootNavigator: true).canPop()) {
+                                                                                                          Navigator.of(context, rootNavigator: true).pop('dialog');
+                                                                                                        }
+                                                                                                      });
+                                                                                                    },
+                                                                                                    innerColor: Colors.red.shade600,
+                                                                                                    outerColor: Colors.white,
+                                                                                                  ),
+                                                                                                ],
+                                                                                              ),
+                                                                                            ),
+                                                                                          );
+                                                                                        }),
+                                                                                  );
+                                                                                });
+                                                                          },
+                                                                          child:
+                                                                              Container(
+                                                                            padding:
+                                                                                const EdgeInsets.symmetric(vertical: 3),
+                                                                            child:
+                                                                                Row(
+                                                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                              children: [
+                                                                                Row(
+                                                                                  children: [
+                                                                                    ClipRRect(
+                                                                                      borderRadius: BorderRadius.circular(25),
+                                                                                      child: Image.network(
+                                                                                        l1[index][0],
+                                                                                        width: 50,
+                                                                                        height: 50,
+                                                                                        fit: BoxFit.cover,
+                                                                                      ),
+                                                                                    ),
+                                                                                    SizedBox(
+                                                                                      width: 10,
+                                                                                    ),
+                                                                                    Text(
+                                                                                      l1[index][1],
+                                                                                      textAlign: TextAlign.left,
+                                                                                      style: GoogleFonts.dmSans(fontSize: 17),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                                Container(
+                                                                                  width: 50,
+                                                                                  child: Row(
+                                                                                    mainAxisAlignment: MainAxisAlignment.start,
+                                                                                    children: [
+                                                                                      Icon(
+                                                                                        LineIcons.starAlt,
+                                                                                        color: Colors.amber,
+                                                                                      ),
+                                                                                      Text(
+                                                                                        "${l1[index][2]}",
+                                                                                        textAlign: TextAlign.left,
+                                                                                        style: GoogleFonts.dmSans(
+                                                                                          fontSize: 15,
+                                                                                        ),
+                                                                                      )
+                                                                                    ],
+                                                                                  ),
+                                                                                )
+                                                                              ],
                                                                             ),
-                                                                            Text(
-                                                                              "${l1[index][2]}",
-                                                                              textAlign: TextAlign.left,
-                                                                              style: GoogleFonts.dmSans(
-                                                                                fontSize: 15,
-                                                                              ),
-                                                                            )
-                                                                          ],
+                                                                          ),
                                                                         ),
-                                                                      )
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            );
-                                                          }
-                                                        },
+                                                                      );
+                                                                    }),
+                                                          ),
+                                                          TextButton.icon(
+                                                            style: TextButton
+                                                                .styleFrom(
+                                                              primary:
+                                                                  Colors.white,
+                                                              backgroundColor:
+                                                                  Colors.black,
+                                                            ),
+                                                            onPressed:
+                                                                getDriverDeatials,
+                                                            icon: Icon(Icons
+                                                                .refresh_outlined),
+                                                            label:
+                                                                Text("Refresh"),
+                                                          ),
+                                                        ],
                                                       ),
+                                                // Padding(
+                                                //   padding:
+                                                //       const EdgeInsets.symmetric(
+                                                //           horizontal: 18),
+                                                //   child: Row(
+                                                //     mainAxisAlignment:
+                                                //         MainAxisAlignment
+                                                //             .spaceBetween,
+                                                //     children: [
+                                                //       DropdownButton<String>(
+                                                //         value: selectedPayment,
+                                                //         icon: Icon(
+                                                //           LineIcons.wallet,
+                                                //           color: Colors.black,
+                                                //         ),
+                                                //         underline: SizedBox(
+                                                //           width: 0,
+                                                //           height: 1,
+                                                //           child: Container(
+                                                //               color:
+                                                //                   Colors.black87),
+                                                //         ),
+                                                //         iconSize: 24,
+                                                //         elevation: 0,
+                                                //         menuMaxHeight: 120,
+                                                //         itemHeight: 48,
+                                                //         style: const TextStyle(
+                                                //             color: Colors.black),
+                                                //         dropdownColor:
+                                                //             Colors.grey[100],
+                                                //         borderRadius:
+                                                //             BorderRadius.circular(
+                                                //                 10),
+                                                //         onChanged:
+                                                //             (String? newValue) {
+                                                //           setState(() {
+                                                //             selectedPayment =
+                                                //                 newValue!;
+                                                //           });
+                                                //         },
+                                                //         items: <String>[
+                                                //           'Cash',
+                                                //           'Razorpay'
+                                                //         ].map<
+                                                //                 DropdownMenuItem<
+                                                //                     String>>(
+                                                //             (String value) {
+                                                //           return DropdownMenuItem<
+                                                //               String>(
+                                                //             value: value,
+                                                //             child: Container(
+                                                //               child: Row(
+                                                //                 mainAxisAlignment:
+                                                //                     MainAxisAlignment
+                                                //                         .start,
+                                                //                 children: [
+                                                //                   Padding(
+                                                //                     padding:
+                                                //                         const EdgeInsets
+                                                //                                 .only(
+                                                //                             bottom:
+                                                //                                 2),
+                                                //                     child: Text(''),
+                                                //                   ),
+                                                //                   SizedBox(
+                                                //                     width: 9,
+                                                //                   ),
+                                                //                   Image.asset(
+                                                //                     "asset/images/$value.png",
+                                                //                     fit: BoxFit
+                                                //                         .cover,
+                                                //                   ),
+                                                //                   value == "Cash"
+                                                //                       ? Text(
+                                                //                           "  \u{20B9}")
+                                                //                       : Text(
+                                                //                           "",
+                                                //                         ),
+                                                //                 ],
+                                                //               ),
+                                                //               width: 80,
+                                                //               height: 25,
+                                                //             ),
+                                                //           );
+                                                //         }).toList(),
+                                                //       ),
+                                                //       ElevatedButton.icon(
+                                                //         onPressed:
+                                                //             getDriverDeatials,
+                                                //         style: ElevatedButton
+                                                //             .styleFrom(
+                                                //                 padding: EdgeInsets
+                                                //                     .symmetric(
+                                                //                         horizontal:
+                                                //                             24,
+                                                //                         vertical:
+                                                //                             8),
+                                                //                 primary:
+                                                //                     Colors.black),
+                                                //         icon: Icon(LineIcons.car),
+                                                //         label: Text("Search Cab"),
+                                                //       ),
+                                                //     ],
+                                                //   ),
+                                                // )
                                               ),
-                                              // Padding(
-                                              //   padding:
-                                              //       const EdgeInsets.symmetric(
-                                              //           horizontal: 18),
-                                              //   child: Row(
-                                              //     mainAxisAlignment:
-                                              //         MainAxisAlignment
-                                              //             .spaceBetween,
-                                              //     children: [
-                                              //       DropdownButton<String>(
-                                              //         value: selectedPayment,
-                                              //         icon: Icon(
-                                              //           LineIcons.wallet,
-                                              //           color: Colors.black,
-                                              //         ),
-                                              //         underline: SizedBox(
-                                              //           width: 0,
-                                              //           height: 1,
-                                              //           child: Container(
-                                              //               color:
-                                              //                   Colors.black87),
-                                              //         ),
-                                              //         iconSize: 24,
-                                              //         elevation: 0,
-                                              //         menuMaxHeight: 120,
-                                              //         itemHeight: 48,
-                                              //         style: const TextStyle(
-                                              //             color: Colors.black),
-                                              //         dropdownColor:
-                                              //             Colors.grey[100],
-                                              //         borderRadius:
-                                              //             BorderRadius.circular(
-                                              //                 10),
-                                              //         onChanged:
-                                              //             (String? newValue) {
-                                              //           setState(() {
-                                              //             selectedPayment =
-                                              //                 newValue!;
-                                              //           });
-                                              //         },
-                                              //         items: <String>[
-                                              //           'Cash',
-                                              //           'Razorpay'
-                                              //         ].map<
-                                              //                 DropdownMenuItem<
-                                              //                     String>>(
-                                              //             (String value) {
-                                              //           return DropdownMenuItem<
-                                              //               String>(
-                                              //             value: value,
-                                              //             child: Container(
-                                              //               child: Row(
-                                              //                 mainAxisAlignment:
-                                              //                     MainAxisAlignment
-                                              //                         .start,
-                                              //                 children: [
-                                              //                   Padding(
-                                              //                     padding:
-                                              //                         const EdgeInsets
-                                              //                                 .only(
-                                              //                             bottom:
-                                              //                                 2),
-                                              //                     child: Text(''),
-                                              //                   ),
-                                              //                   SizedBox(
-                                              //                     width: 9,
-                                              //                   ),
-                                              //                   Image.asset(
-                                              //                     "asset/images/$value.png",
-                                              //                     fit: BoxFit
-                                              //                         .cover,
-                                              //                   ),
-                                              //                   value == "Cash"
-                                              //                       ? Text(
-                                              //                           "  \u{20B9}")
-                                              //                       : Text(
-                                              //                           "",
-                                              //                         ),
-                                              //                 ],
-                                              //               ),
-                                              //               width: 80,
-                                              //               height: 25,
-                                              //             ),
-                                              //           );
-                                              //         }).toList(),
-                                              //       ),
-                                              //       ElevatedButton.icon(
-                                              //         onPressed:
-                                              //             getDriverDeatials,
-                                              //         style: ElevatedButton
-                                              //             .styleFrom(
-                                              //                 padding: EdgeInsets
-                                              //                     .symmetric(
-                                              //                         horizontal:
-                                              //                             24,
-                                              //                         vertical:
-                                              //                             8),
-                                              //                 primary:
-                                              //                     Colors.black),
-                                              //         icon: Icon(LineIcons.car),
-                                              //         label: Text("Search Cab"),
-                                              //       ),
-                                              //     ],
-                                              //   ),
-                                              // )
                                             ],
                                           ),
                                         )
                                       ],
                                     ),
                                   )
-                                : Container(
-                                    height: 250.0,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 24.0, vertical: 10.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(18.0),
-                                        topRight: Radius.circular(18.0),
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Color.fromRGBO(0, 0, 0, 0.3),
-                                          blurRadius: 16.5,
-                                          spreadRadius: 0.5,
-                                          offset: Offset(0.7, 0.7),
-                                        )
-                                      ],
-                                    ),
-                                    child: ListView(
-                                      controller: scrollController,
-                                      children: [
-                                        Column(
+                                : !reaching_destination
+                                    ? Container(
+                                        height: 250.0,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 24.0, vertical: 10.0),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(18.0),
+                                            topRight: Radius.circular(18.0),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Color.fromRGBO(0, 0, 0, 0.3),
+                                              blurRadius: 16.5,
+                                              spreadRadius: 0.5,
+                                              offset: Offset(0.7, 0.7),
+                                            )
+                                          ],
+                                        ),
+                                        child: ListView(
+                                          controller: scrollController,
                                           children: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
+                                            Column(
                                               children: [
-                                                Icon(
-                                                  Icons.arrow_drop_up_rounded,
-                                                  size: 30,
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          18.0),
-                                                  child: Image.network(
-                                                      "${Provider.of<DriverProvider>(context, listen: false).driver.imageurl}",
-                                                      width: 70,
-                                                      height: 70,
-                                                      fit: BoxFit.cover),
-                                                ),
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
                                                   children: [
-                                                    Text(
-                                                        "${Provider.of<DriverProvider>(context, listen: false).driver.username}",
-                                                        style:
-                                                            GoogleFonts.roboto(
+                                                    Icon(
+                                                      Icons
+                                                          .arrow_drop_up_rounded,
+                                                      size: 30,
+                                                    ),
+                                                  ],
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              18.0),
+                                                      child: Image.network(
+                                                          "${Provider.of<DriverProvider>(context, listen: false).driver.imageurl}",
+                                                          width: 70,
+                                                          height: 70,
+                                                          fit: BoxFit.cover),
+                                                    ),
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                            "${Provider.of<DriverProvider>(context, listen: false).driver.username}",
+                                                            style: GoogleFonts.roboto(
                                                                 fontSize: 18,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w600)),
-                                                    Text(
-                                                        "${Provider.of<DriverProvider>(context, listen: false).driver.phone}",
-                                                        style: GoogleFonts
-                                                            .openSans(
-                                                                fontSize: 13,
-                                                                color: Colors
-                                                                    .black45))
+                                                        Text(
+                                                            "${Provider.of<DriverProvider>(context, listen: false).driver.phone}",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        13,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          LineIcons.starAlt,
+                                                          color: Colors.amber,
+                                                        ),
+                                                        Text(
+                                                          "  ${Provider.of<DriverProvider>(context, listen: false).driver.rating}",
+                                                          textAlign:
+                                                              TextAlign.left,
+                                                          style: GoogleFonts
+                                                              .dmSans(
+                                                            fontSize: 15,
+                                                          ),
+                                                        )
+                                                      ],
+                                                    ),
                                                   ],
                                                 ),
+                                                SizedBox(
+                                                  height: 5,
+                                                ),
                                                 Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
                                                   children: [
-                                                    Icon(
-                                                      LineIcons.starAlt,
-                                                      color: Colors.amber,
-                                                    ),
-                                                    Text(
-                                                      "  ${Provider.of<DriverProvider>(context, listen: false).driver.rating}",
-                                                      textAlign: TextAlign.left,
-                                                      style: GoogleFonts.dmSans(
-                                                        fontSize: 15,
-                                                      ),
+                                                    Image.network(
+                                                        '${Provider.of<DriverProvider>(context, listen: false).driver.cabimage}',
+                                                        width: 140,
+                                                        height: 90,
+                                                        fit: BoxFit.cover),
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          '${Provider.of<DriverProvider>(context, listen: false).driver.cab_model}',
+                                                          style: GoogleFonts
+                                                              .roboto(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600),
+                                                        ),
+                                                        Text(
+                                                          '${Provider.of<DriverProvider>(context, listen: false).driver.cab_number}',
+                                                          style: GoogleFonts
+                                                              .roboto(
+                                                            fontSize: 15,
+                                                            color:
+                                                                Colors.black54,
+                                                          ),
+                                                        )
+                                                      ],
                                                     )
                                                   ],
                                                 ),
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 5,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Image.network(
-                                                    '${Provider.of<DriverProvider>(context, listen: false).driver.cabimage}',
-                                                    width: 140,
-                                                    height: 90,
-                                                    fit: BoxFit.cover),
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                                SizedBox(
+                                                  height: 12,
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
                                                   children: [
-                                                    Text(
-                                                      '${Provider.of<DriverProvider>(context, listen: false).driver.cab_model}',
-                                                      style: GoogleFonts.roboto(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w600),
+                                                    Row(
+                                                      children: [
+                                                        FaIcon(Iconsax.map5),
+                                                        SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                            "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
+                                                                " KM",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        14,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
                                                     ),
-                                                    Text(
-                                                      '${Provider.of<DriverProvider>(context, listen: false).driver.cab_number}',
-                                                      style: GoogleFonts.roboto(
-                                                        fontSize: 15,
-                                                        color: Colors.black54,
-                                                      ),
+                                                    Row(
+                                                      children: [
+                                                        Icon(Iconsax.clock5),
+                                                        SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                            "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)}" +
+                                                                " Min",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        14,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Text(' \u{20B9}',
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        20,
+                                                                    color: Colors
+                                                                        .black)),
+                                                        SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                            "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}" +
+                                                                " Rupees",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        14,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
                                                     )
                                                   ],
-                                                )
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 12,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    FaIcon(Iconsax.map5),
-                                                    SizedBox(
-                                                      width: 10,
-                                                    ),
-                                                    Text(
-                                                        "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
-                                                            " KM",
+                                                ),
+                                                SizedBox(
+                                                  height: 16,
+                                                ),
+                                                SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons
+                                                          .my_location_rounded),
+                                                      SizedBox(
+                                                        width: 10,
+                                                      ),
+                                                      Text(
+                                                        "${Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address}",
                                                         style: GoogleFonts
                                                             .openSans(
-                                                                fontSize: 14,
+                                                                fontSize: 16,
                                                                 color: Colors
-                                                                    .black45))
-                                                  ],
+                                                                    .black54),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: 16,
+                                                ),
+                                                SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons
+                                                          .location_on_rounded),
+                                                      SizedBox(
+                                                        width: 10,
+                                                      ),
+                                                      Text(
+                                                        "${Provider.of<DestinationMarkers>(context, listen: false).address}",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 16,
+                                                                color: Colors
+                                                                    .black54),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: 10,
                                                 ),
                                                 Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceAround,
                                                   children: [
-                                                    Icon(Iconsax.clock5),
-                                                    SizedBox(
-                                                      width: 10,
+                                                    TextButton.icon(
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                              primary:
+                                                                  Colors.black,
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                vertical: 8,
+                                                                horizontal: 20,
+                                                              )),
+                                                      onPressed: () {
+                                                        launch(
+                                                            "tel://${Provider.of<DriverProvider>(context, listen: false).driver.phone}");
+                                                      },
+                                                      icon: Icon(
+                                                        Icons.phone,
+                                                        color: Colors.white,
+                                                      ),
+                                                      label: Text(" Call",
+                                                          style: GoogleFonts
+                                                              .montserrat(
+                                                                  fontSize: 16,
+                                                                  color: Colors
+                                                                      .white)),
                                                     ),
-                                                    Text(
-                                                        "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)}" +
-                                                            " Min",
-                                                        style: GoogleFonts
-                                                            .openSans(
-                                                                fontSize: 14,
-                                                                color: Colors
-                                                                    .black45))
+                                                    TextButton.icon(
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                              primary:
+                                                                  Colors.black,
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                vertical: 8,
+                                                                horizontal: 20,
+                                                              )),
+                                                      onPressed: () async {
+                                                        SharedPreferences
+                                                            prefs =
+                                                            await SharedPreferences
+                                                                .getInstance();
+
+                                                        var response =
+                                                            prefs.setBool(
+                                                                "isdriverpickup",
+                                                                false);
+                                                        Msg()
+                                                            .sendCancelTrip(
+                                                                Provider.of<DriverProvider>(
+                                                                        context,
+                                                                        listen:
+                                                                            false)
+                                                                    .driver
+                                                                    .driver_token)
+                                                            .then((value) {
+                                                          setState(() {
+                                                            placeMarker.removeWhere(
+                                                                (element) =>
+                                                                    element
+                                                                        .markerId
+                                                                        .value ==
+                                                                    "Driver_location");
+
+                                                            cab_details = true;
+                                                            driver_details =
+                                                                false;
+                                                            trip_details =
+                                                                false;
+                                                            try {
+                                                              driver_location_sub
+                                                                  .cancel();
+                                                            } catch (e) {}
+                                                          });
+                                                        });
+                                                      },
+                                                      icon: Icon(
+                                                        Icons.cancel_outlined,
+                                                        color: Colors.white,
+                                                      ),
+                                                      label: Text(
+                                                          " Cancel Ride",
+                                                          style: GoogleFonts
+                                                              .montserrat(
+                                                                  fontSize: 16,
+                                                                  color: Colors
+                                                                      .white)),
+                                                    )
                                                   ],
-                                                ),
-                                                Row(
-                                                  children: [
-                                                    Text(' \u{20B9}',
-                                                        style: GoogleFonts
-                                                            .openSans(
-                                                                fontSize: 20,
-                                                                color: Colors
-                                                                    .black)),
-                                                    SizedBox(
-                                                      width: 10,
-                                                    ),
-                                                    Text(
-                                                        "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}" +
-                                                            " Rupees",
-                                                        style: GoogleFonts
-                                                            .openSans(
-                                                                fontSize: 14,
-                                                                color: Colors
-                                                                    .black45))
-                                                  ],
-                                                )
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 16,
-                                            ),
-                                            SingleChildScrollView(
-                                              scrollDirection: Axis.horizontal,
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons
-                                                      .my_location_rounded),
-                                                  SizedBox(
-                                                    width: 10,
-                                                  ),
-                                                  Text(
-                                                    "${Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address}",
-                                                    style: GoogleFonts.openSans(
-                                                        fontSize: 16,
-                                                        color: Colors.black54),
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              height: 16,
-                                            ),
-                                            SingleChildScrollView(
-                                              scrollDirection: Axis.horizontal,
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons
-                                                      .location_on_rounded),
-                                                  SizedBox(
-                                                    width: 10,
-                                                  ),
-                                                  Text(
-                                                    "${Provider.of<DestinationMarkers>(context, listen: false).address}",
-                                                    style: GoogleFonts.openSans(
-                                                        fontSize: 16,
-                                                        color: Colors.black54),
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              height: 10,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceAround,
-                                              children: [
-                                                TextButton.icon(
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                          primary: Colors.black,
-                                                          padding: EdgeInsets
-                                                              .symmetric(
-                                                            vertical: 8,
-                                                            horizontal: 20,
-                                                          )),
-                                                  onPressed: () {
-                                                    launch(
-                                                        "tel://${Provider.of<DriverProvider>(context, listen: false).driver.phone}");
-                                                  },
-                                                  icon: Icon(
-                                                    Icons.phone,
-                                                    color: Colors.white,
-                                                  ),
-                                                  label: Text(" Call",
-                                                      style: GoogleFonts
-                                                          .montserrat(
-                                                              fontSize: 16,
-                                                              color: Colors
-                                                                  .white)),
-                                                ),
-                                                TextButton.icon(
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                          primary: Colors.black,
-                                                          padding: EdgeInsets
-                                                              .symmetric(
-                                                            vertical: 8,
-                                                            horizontal: 20,
-                                                          )),
-                                                  onPressed: () {},
-                                                  icon: Icon(
-                                                    Icons.cancel_outlined,
-                                                    color: Colors.white,
-                                                  ),
-                                                  label: Text(" Cancel Ride",
-                                                      style: GoogleFonts
-                                                          .montserrat(
-                                                              fontSize: 16,
-                                                              color: Colors
-                                                                  .white)),
                                                 )
                                               ],
                                             )
                                           ],
-                                        )
-                                      ],
-                                    ),
-                                  );
+                                        ),
+                                      )
+                                    : Container(
+                                        height: 250.0,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 24.0, vertical: 10.0),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(18.0),
+                                            topRight: Radius.circular(18.0),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Color.fromRGBO(0, 0, 0, 0.3),
+                                              blurRadius: 16.5,
+                                              spreadRadius: 0.5,
+                                              offset: Offset(0.7, 0.7),
+                                            )
+                                          ],
+                                        ),
+                                        child: ListView(
+                                          controller: scrollController,
+                                          children: [
+                                            Column(
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .arrow_drop_up_rounded,
+                                                      size: 30,
+                                                    ),
+                                                  ],
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              18.0),
+                                                      child: Image.network(
+                                                          "${Provider.of<DriverProvider>(context, listen: false).driver.imageurl}",
+                                                          width: 70,
+                                                          height: 70,
+                                                          fit: BoxFit.cover),
+                                                    ),
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                            "${Provider.of<DriverProvider>(context, listen: false).driver.username}",
+                                                            style: GoogleFonts.roboto(
+                                                                fontSize: 18,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600)),
+                                                        Text(
+                                                            "${Provider.of<DriverProvider>(context, listen: false).driver.phone}",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        13,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          LineIcons.starAlt,
+                                                          color: Colors.amber,
+                                                        ),
+                                                        Text(
+                                                          "  ${Provider.of<DriverProvider>(context, listen: false).driver.rating}",
+                                                          textAlign:
+                                                              TextAlign.left,
+                                                          style: GoogleFonts
+                                                              .dmSans(
+                                                            fontSize: 15,
+                                                          ),
+                                                        )
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                                SizedBox(
+                                                  height: 5,
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Image.network(
+                                                        '${Provider.of<DriverProvider>(context, listen: false).driver.cabimage}',
+                                                        width: 140,
+                                                        height: 90,
+                                                        fit: BoxFit.cover),
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          '${Provider.of<DriverProvider>(context, listen: false).driver.cab_model}',
+                                                          style: GoogleFonts
+                                                              .roboto(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600),
+                                                        ),
+                                                        Text(
+                                                          '${Provider.of<DriverProvider>(context, listen: false).driver.cab_number}',
+                                                          style: GoogleFonts
+                                                              .roboto(
+                                                            fontSize: 15,
+                                                            color:
+                                                                Colors.black54,
+                                                          ),
+                                                        )
+                                                      ],
+                                                    )
+                                                  ],
+                                                ),
+                                                SizedBox(
+                                                  height: 12,
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        FaIcon(Iconsax.map5),
+                                                        SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                            "${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
+                                                                " KM",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        14,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Icon(Iconsax.clock5),
+                                                        SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                            "${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)}" +
+                                                                " Min",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        14,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Text(' \u{20B9}',
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        20,
+                                                                    color: Colors
+                                                                        .black)),
+                                                        SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Text(
+                                                            "${selectedCar == "Cab-Mini" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 24 + 60).ceil().toString())}" : selectedCar == "Cab-UX" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 35 + 100).ceil().toString())}" : selectedCar == "Cab-Delux" ? "${((Provider.of<DirectionsProvider>(context, listen: false).distance! * 42 + 150).ceil().toString())}" : ""}" +
+                                                                " Rupees",
+                                                            style: GoogleFonts
+                                                                .openSans(
+                                                                    fontSize:
+                                                                        14,
+                                                                    color: Colors
+                                                                        .black45))
+                                                      ],
+                                                    )
+                                                  ],
+                                                ),
+                                                SizedBox(
+                                                  height: 16,
+                                                ),
+                                                SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons
+                                                          .my_location_rounded),
+                                                      SizedBox(
+                                                        width: 10,
+                                                      ),
+                                                      Text(
+                                                        "${Provider.of<PickupMarkers>(context, listen: false).address == null ? Provider.of<UserData>(context, listen: false).pickuplocation!.placeAddres : Provider.of<PickupMarkers>(context, listen: false).address}",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 16,
+                                                                color: Colors
+                                                                    .black54),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: 16,
+                                                ),
+                                                SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons
+                                                          .location_on_rounded),
+                                                      SizedBox(
+                                                        width: 10,
+                                                      ),
+                                                      Text(
+                                                        "${Provider.of<DestinationMarkers>(context, listen: false).address}",
+                                                        style: GoogleFonts
+                                                            .openSans(
+                                                                fontSize: 16,
+                                                                color: Colors
+                                                                    .black54),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: 10,
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceAround,
+                                                  children: [
+                                                    TextButton.icon(
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                              primary:
+                                                                  Colors.black,
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                vertical: 8,
+                                                                horizontal: 20,
+                                                              )),
+                                                      onPressed: () {},
+                                                      icon: Icon(
+                                                        Icons
+                                                            .help_center_rounded,
+                                                        size: 20,
+                                                        color: Colors.white,
+                                                      ),
+                                                      label: Text("Emergency",
+                                                          style: GoogleFonts
+                                                              .montserrat(
+                                                                  fontSize: 16,
+                                                                  color: Colors
+                                                                      .white)),
+                                                    ),
+                                                    TextButton.icon(
+                                                      icon: LineIcon(
+                                                          LineIcons.car,
+                                                          size: 20,
+                                                          color: Colors.white),
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                              primary:
+                                                                  Colors.black,
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                vertical: 8,
+                                                                horizontal: 20,
+                                                              )),
+                                                      onPressed: () async {
+                                                        SharedPreferences
+                                                            prefs =
+                                                            await SharedPreferences
+                                                                .getInstance();
+
+                                                        var response =
+                                                            prefs.setBool(
+                                                                "isdriverpickup",
+                                                                false);
+                                                        Msg()
+                                                            .sendCancelTrip(
+                                                                Provider.of<DriverProvider>(
+                                                                        context,
+                                                                        listen:
+                                                                            false)
+                                                                    .driver
+                                                                    .driver_token)
+                                                            .then((value) {
+                                                          setState(() {
+                                                            placeMarker.removeWhere(
+                                                                (element) =>
+                                                                    element
+                                                                        .markerId
+                                                                        .value ==
+                                                                    "Driver_location");
+
+                                                            cab_details = true;
+                                                            driver_details =
+                                                                false;
+                                                            trip_details =
+                                                                false;
+                                                            try {
+                                                              driver_location_sub
+                                                                  .cancel();
+                                                            } catch (e) {}
+                                                          });
+                                                        });
+                                                      },
+                                                      label: Text("End Trip",
+                                                          style: GoogleFonts
+                                                              .montserrat(
+                                                                  fontSize: 16,
+                                                                  color: Colors
+                                                                      .white)),
+                                                    )
+                                                  ],
+                                                )
+                                              ],
+                                            )
+                                          ],
+                                        ),
+                                      );
                   },
                 ),
                 Padding(
@@ -2934,7 +3597,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
               ],
             ),
           ),
-        ),
+        ]),
       ),
     );
   }

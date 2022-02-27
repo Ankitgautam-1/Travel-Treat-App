@@ -94,29 +94,7 @@ class _SignInState extends State<SignIn> {
 
             Provider.of<AccountProvider>(context, listen: false)
                 .updateuseraccount(userAccount);
-            bool cacheimage = await File(image!).exists();
-            print("cache_image:$cacheimage");
-            if (cacheimage) {
-              Provider.of<ImageData>(context, listen: false)
-                  .updateimage(File(image!));
-            } else {
-              firebase_storage.Reference ref = firebase_storage
-                  .FirebaseStorage.instance
-                  .ref()
-                  .child('Users_profile')
-                  .child('/${user.uid}/${user.uid}');
-              String url = await ref.getDownloadURL();
-              print("url:->$url");
-              Dio newimage = Dio();
-              String savePath =
-                  Directory.systemTemp.path + '/' + user.uid + "_profile";
-              await newimage.download(url, savePath,
-                  options: Options(responseType: ResponseType.bytes));
-              db.child('Users').child(user.uid).update({"Image": savePath});
-              Provider.of<ImageData>(context, listen: false)
-                  .updateimage(File(savePath));
-              image = savePath;
-            }
+
             SharedPreferences prefs = await SharedPreferences.getInstance();
             prefs.setString("Uid", user.uid);
             prefs.setString("Username", username!);
@@ -144,6 +122,9 @@ class _SignInState extends State<SignIn> {
                 "Error Occured during sign in internet connection strength is weak",
                 snackPosition: SnackPosition.BOTTOM,
                 duration: Duration(seconds: 4));
+            setState(() {
+              context.loaderOverlay.hide();
+            });
           } catch (e) {
             print(e);
           }
@@ -336,238 +317,244 @@ class _SignInState extends State<SignIn> {
               },
             ),
           ),
-          body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.07),
-                Padding(
-                  padding: const EdgeInsets.only(left: 25),
-                  child: Text("Hello,\nWelcome Back",
-                      style: TextStyle(fontSize: 26, color: Colors.black)),
-                ),
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.10,
-                ),
-                Center(
-                  child: Form(
-                    key: _formkey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 320,
-                          child: TextFormField(
-                            controller: _email,
-                            validator: (val) =>
-                                val!.isEmail ? null : "Enter valide email",
-                            keyboardType: TextInputType.text,
-                            style: GoogleFonts.openSans(),
-                            textInputAction: TextInputAction.next,
-                            cursorColor: Colors.black,
-                            decoration: InputDecoration(
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: Icon(Icons.email, color: Colors.black87),
-                              ),
-                              contentPadding: EdgeInsets.all(20),
-                              hintText: "Email",
-                              hintStyle: GoogleFonts.roboto(
-                                  color: Colors.black54, fontSize: 15),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(width: .6),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(width: 1, color: Colors.black),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.04,
-                        ),
-                        //input password
-                        Container(
-                          width: 320,
-                          child: TextFormField(
-                            obscureText: _obscure,
-                            controller: _pass,
-                            style: GoogleFonts.openSans(),
-                            validator: (val) => val!.length > 6
-                                ? null
-                                : "password should be at least 6 charcter",
-                            keyboardType: TextInputType.text,
-                            cursorColor: Colors.black,
-                            textInputAction: TextInputAction.send,
-                            decoration: InputDecoration(
-                              suffixIcon: Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: IconButton(
-                                  icon: FaIcon(
-                                    _obscure
-                                        ? FontAwesomeIcons.eye
-                                        : FontAwesomeIcons.eyeSlash,
-                                    color: Colors.black87,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscure = !_obscure;
-                                    });
-                                  },
+          body: GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.07),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 25),
+                    child: Text("Hello,\nWelcome Back",
+                        style: TextStyle(fontSize: 26, color: Colors.black)),
+                  ),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.10,
+                  ),
+                  Center(
+                    child: Form(
+                      key: _formkey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 320,
+                            child: TextFormField(
+                              controller: _email,
+                              validator: (val) =>
+                                  val!.isEmail ? null : "Enter valide email",
+                              keyboardType: TextInputType.text,
+                              style: GoogleFonts.openSans(),
+                              textInputAction: TextInputAction.next,
+                              cursorColor: Colors.black,
+                              decoration: InputDecoration(
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child:
+                                      Icon(Icons.email, color: Colors.black87),
+                                ),
+                                contentPadding: EdgeInsets.all(20),
+                                hintText: "Email",
+                                hintStyle: GoogleFonts.roboto(
+                                    color: Colors.black54, fontSize: 15),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(width: .6),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(width: 1, color: Colors.black),
                                 ),
                               ),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child:
-                                    Icon(Icons.vpn_key, color: Colors.black87),
-                              ),
-                              contentPadding: EdgeInsets.all(20),
-                              hintText: "Password",
-                              hintStyle: GoogleFonts.roboto(
-                                  color: Colors.black54, fontSize: 15),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(width: .6),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(width: 1, color: Colors.black),
-                              ),
                             ),
                           ),
-                        ),
-
-                        SizedBox(
-                          height: 50,
-                          width: double.infinity,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Container(
-                                margin: EdgeInsets.only(right: 20),
-                                child: TextButton(
-                                  style: TextButton.styleFrom(
-                                    primary: Colors.blue[700],
-                                  ),
-                                  onPressed: () {},
-                                  child: Text("Forgot Password"),
-                                ),
-                              ),
-                            ],
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.04,
                           ),
-                        ),
-
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.06,
-                        ),
-
-                        ElevatedButton(
-                          onPressed: () async {
-                            FocusScope.of(context)
-                                .unfocus(); //to hide the keyboard by unfocusing on textformfield
-                            await loginwithemail();
-                          },
-                          child: Text('Sign In',
-                              style: GoogleFonts.ubuntu(
-                                  color: Colors.white, fontSize: 16)),
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                10,
-                              ),
-                            ),
-                            onPrimary: Colors.white,
-                            primary: Colors.black,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 80,
-                              vertical: 13,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.01,
-                        ),
-                        SizedBox(
-                          height: 24,
-                          width: double.infinity,
-                          child: Center(
-                            child: Stack(
-                              children: [
-                                Center(
-                                  child: Container(
-                                    height: 1,
-                                    width: MediaQuery.of(context).size.width *
-                                        0.65,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 50),
-                                    child: Text(
-                                      ' Or ',
-                                      style: TextStyle(
-                                          backgroundColor: Colors.white),
+                          //input password
+                          Container(
+                            width: 320,
+                            child: TextFormField(
+                              obscureText: _obscure,
+                              controller: _pass,
+                              style: GoogleFonts.openSans(),
+                              validator: (val) => val!.length > 6
+                                  ? null
+                                  : "password should be at least 6 charcter",
+                              keyboardType: TextInputType.text,
+                              cursorColor: Colors.black,
+                              textInputAction: TextInputAction.send,
+                              decoration: InputDecoration(
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: IconButton(
+                                    icon: FaIcon(
+                                      _obscure
+                                          ? FontAwesomeIcons.eye
+                                          : FontAwesomeIcons.eyeSlash,
+                                      color: Colors.black87,
                                     ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscure = !_obscure;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Icon(Icons.vpn_key,
+                                      color: Colors.black87),
+                                ),
+                                contentPadding: EdgeInsets.all(20),
+                                hintText: "Password",
+                                hintStyle: GoogleFonts.roboto(
+                                    color: Colors.black54, fontSize: 15),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(width: .6),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(width: 1, color: Colors.black),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(
+                            height: 50,
+                            width: double.infinity,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.only(right: 20),
+                                  child: TextButton(
+                                    style: TextButton.styleFrom(
+                                      primary: Colors.blue[700],
+                                    ),
+                                    onPressed: () {},
+                                    child: Text("Forgot Password"),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.01,
-                        ),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            primary: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.06,
+                          ),
+
+                          ElevatedButton(
+                            onPressed: () async {
+                              FocusScope.of(context)
+                                  .unfocus(); //to hide the keyboard by unfocusing on textformfield
+                              await loginwithemail();
+                            },
+                            child: Text('Sign In',
+                                style: GoogleFonts.ubuntu(
+                                    color: Colors.white, fontSize: 16)),
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  10,
+                                ),
+                              ),
+                              onPrimary: Colors.white,
+                              primary: Colors.black,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 80,
+                                vertical: 13,
+                              ),
                             ),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 7),
                           ),
-                          label: Text('Sign in with Google',
-                              style: GoogleFonts.ubuntu(
-                                  color: Colors.black, fontSize: 16)),
-                          icon: Image.asset(
-                            'asset/images/google_logo.png',
-                            width: 35,
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.01,
                           ),
-                          onPressed: () async {
-                            signInWithGoogle();
-                          },
-                        ),
-                        SizedBox(
-                          height: 40,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Don\'t have an Account ?',
-                                style: GoogleFonts.roboto(
+                          SizedBox(
+                            height: 24,
+                            width: double.infinity,
+                            child: Center(
+                              child: Stack(
+                                children: [
+                                  Center(
+                                    child: Container(
+                                      height: 1,
+                                      width: MediaQuery.of(context).size.width *
+                                          0.65,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 50),
+                                      child: Text(
+                                        ' Or ',
+                                        style: TextStyle(
+                                            backgroundColor: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.01,
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              primary: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 7),
+                            ),
+                            label: Text('Sign in with Google',
+                                style: GoogleFonts.ubuntu(
                                     color: Colors.black, fontSize: 16)),
-                            GestureDetector(
-                              onTap: () {
-                                Get.off(SignUp(app: app));
-                              },
-                              child: Text(' Sign Up',
-                                  style: GoogleFonts.roboto(
-                                      color: Colors.blue, fontSize: 16)),
+                            icon: Image.asset(
+                              'asset/images/google_logo.png',
+                              width: 35,
                             ),
-                          ],
-                        ),
-                      ],
+                            onPressed: () async {
+                              signInWithGoogle();
+                            },
+                          ),
+                          SizedBox(
+                            height: 40,
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Don\'t have an Account ?',
+                                  style: GoogleFonts.roboto(
+                                      color: Colors.black, fontSize: 16)),
+                              GestureDetector(
+                                onTap: () {
+                                  Get.off(SignUp(app: app));
+                                },
+                                child: Text(' Sign Up',
+                                    style: GoogleFonts.roboto(
+                                        color: Colors.blue, fontSize: 16)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

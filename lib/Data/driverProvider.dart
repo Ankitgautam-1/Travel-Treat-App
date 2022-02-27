@@ -10,7 +10,8 @@ class DriverProvider extends ChangeNotifier {
       phone: "",
       cab_model: "",
       cab_number: "",
-      rating: "");
+      rating: "",
+      driver_token: "");
 
   void updateDriver(Driver driver) {
     this.driver = driver;
