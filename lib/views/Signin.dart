@@ -37,7 +37,7 @@ class SignIn extends StatefulWidget {
 
 class _SignInState extends State<SignIn> {
   FirebaseApp app;
-  String? username, email, ph, image = "", emph = "", token = "";
+  String? username, email, ph, image = "", emph = "", token = "", rating = "";
   _SignInState({required this.app});
   TextEditingController _email = TextEditingController();
   TextEditingController _pass = TextEditingController();
@@ -68,55 +68,54 @@ class _SignInState extends State<SignIn> {
           ImageUrl = value.data()!["Image"];
 
           try {
-            final DatabaseReference db = FirebaseDatabase(app: app).reference();
+            collectionReference.doc(uid).get().then((value) async {
+              username = value.data()!['Username'];
+              email = value.data()!['Email'];
+              ph = value.data()!['Phone'];
+              image = value.data()!['Image'];
+              emph = value.data()!['emph'];
+              token = value.data()!['token'];
+              rating = value.data()!['rating'];
 
-            await db.child('Users').child(uid).get().then(
-                  (DataSnapshot? datasnapshot) => print(
-                    result = datasnapshot!.value,
-                  ),
-                );
-            username = result!['Username'];
-            email = result!['Email'];
-            ph = result!['Phone'];
-            image = result!['Image'];
-            emph = result!['emph'];
-            token = result!['token'];
-
-            print("$username ,$email,$image,$ph");
-            UserAccount userAccount = UserAccount(
+              print("$username ,$email,$image,$ph");
+              UserAccount userAccount = UserAccount(
                 Email: email!,
                 Image: image!,
                 Ph: ph!,
                 Uid: uid,
                 emph: emph!,
                 ImageUrl: ImageUrl,
-                Username: username!);
+                Username: username!,
+                rating: rating ?? "4.5",
+              );
 
-            Provider.of<AccountProvider>(context, listen: false)
-                .updateuseraccount(userAccount);
+              Provider.of<AccountProvider>(context, listen: false)
+                  .updateuseraccount(userAccount);
 
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.setString("Uid", user.uid);
-            prefs.setString("Username", username!);
-            prefs.setString("Email", email!);
-            prefs.setString("Ph", ph!);
-            prefs.setString("Image", image!);
-            prefs.setString("emph", emph!);
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              prefs.setString("Uid", user.uid);
+              prefs.setString("Username", username!);
+              prefs.setString("Email", email!);
+              prefs.setString("Ph", ph!);
+              prefs.setString("Image", image!);
+              prefs.setString("emph", emph!);
+              prefs.setString("rating", rating!);
 
-            if (await permissions.Permission.locationWhenInUse.isGranted ||
-                await permissions.Permission.locationWhenInUse.isLimited ||
-                await permissions.Permission.location.isGranted ||
-                await permissions.Permission.location.isLimited) {
-              _checkGps();
-              setState(() {
-                context.loaderOverlay.hide();
-              });
-            } else {
-              setState(() {
-                context.loaderOverlay.hide();
-              });
-              Get.offAll(LocationPermissoin(app: app));
-            }
+              if (await permissions.Permission.locationWhenInUse.isGranted ||
+                  await permissions.Permission.locationWhenInUse.isLimited ||
+                  await permissions.Permission.location.isGranted ||
+                  await permissions.Permission.location.isLimited) {
+                _checkGps();
+                setState(() {
+                  context.loaderOverlay.hide();
+                });
+              } else {
+                setState(() {
+                  context.loaderOverlay.hide();
+                });
+                Get.offAll(LocationPermissoin(app: app));
+              }
+            });
           } on PlatformException catch (e) {
             Get.snackbar("Sign In ",
                 "Error Occured during sign in internet connection strength is weak",
@@ -185,6 +184,7 @@ class _SignInState extends State<SignIn> {
         email = result!['Email'];
         ph = result!['Phone'];
         image = result!['Image'];
+
         print("Account details==$username ,$email,$image,$ph");
 
         bool cacheimage = await File(image!).exists();
@@ -221,13 +221,16 @@ class _SignInState extends State<SignIn> {
         prefs.setString("Ph", ph!);
         prefs.setString("Image", image!);
         prefs.setString("emph", emph!);
+        prefs.setString("rating", rating!);
         UserAccount userAccData = UserAccount(
-            Email: email!,
-            Image: image,
-            Ph: ph!,
-            Uid: user.uid,
-            emph: emph!,
-            Username: username!);
+          Email: email!,
+          Image: image,
+          Ph: ph!,
+          Uid: user.uid,
+          emph: emph!,
+          Username: username!,
+          rating: rating ?? "4.5",
+        );
         Provider.of<AccountProvider>(context, listen: false)
             .updateuseraccount(userAccData);
         if (await permissions.Permission.locationWhenInUse.isGranted ||
@@ -476,63 +479,45 @@ class _SignInState extends State<SignIn> {
                             ),
                           ),
                           SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.01,
+                            height: MediaQuery.of(context).size.height * 0.12,
                           ),
-                          SizedBox(
-                            height: 24,
-                            width: double.infinity,
-                            child: Center(
-                              child: Stack(
-                                children: [
-                                  Center(
-                                    child: Container(
-                                      height: 1,
-                                      width: MediaQuery.of(context).size.width *
-                                          0.65,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  Center(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 50),
-                                      child: Text(
-                                        ' Or ',
-                                        style: TextStyle(
-                                            backgroundColor: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.01,
-                          ),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              primary: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 7),
-                            ),
-                            label: Text('Sign in with Google',
-                                style: GoogleFonts.ubuntu(
-                                    color: Colors.black, fontSize: 16)),
-                            icon: Image.asset(
-                              'asset/images/google_logo.png',
-                              width: 35,
-                            ),
-                            onPressed: () async {
-                              signInWithGoogle();
-                            },
-                          ),
-                          SizedBox(
-                            height: 40,
-                          ),
+
+                          // SizedBox(
+                          //   height: MediaQuery.of(context).size.height * 0.01,
+                          // ),
+                          // SizedBox(
+                          //   height: 24,
+                          //   width: double.infinity,
+                          //   child: Center(
+                          //     child: Stack(
+                          //       children: [
+                          //         Center(
+                          //           child: Container(
+                          //             height: 1,
+                          //             width: MediaQuery.of(context).size.width *
+                          //                 0.65,
+                          //             color: Colors.black,
+                          //           ),
+                          //         ),
+                          //         Center(
+                          //           child: Container(
+                          //             padding: const EdgeInsets.symmetric(
+                          //                 horizontal: 50),
+                          //             child: Text(
+                          //               ' Or ',
+                          //               style: TextStyle(
+                          //                   backgroundColor: Colors.white),
+                          //             ),
+                          //           ),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ),
+                          // ),
+
+                          // SizedBox(
+                          //   height: 40,
+                          // ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [

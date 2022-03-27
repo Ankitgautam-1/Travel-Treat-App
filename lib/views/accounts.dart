@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:app/Data/accountProvider.dart';
 import 'package:app/Data/image.dart';
+import 'package:app/views/settings/myTrips.dart';
 import 'package:app/views/settings/myaccount.dart';
 import 'package:circular_profile_avatar/circular_profile_avatar.dart';
 import 'package:flutter/material.dart';
@@ -154,7 +155,9 @@ class _AccountsState extends State<Accounts>
                             padding: EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            Get.to(MyTrips());
+                          },
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [

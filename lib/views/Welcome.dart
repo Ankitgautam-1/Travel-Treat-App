@@ -120,12 +120,14 @@ class _WelcomeState extends State<Welcome> {
         prefs.setString("Image", image!);
         prefs.setString("emph", emph!);
         UserAccount userAccData = UserAccount(
-            Email: email!,
-            Image: image,
-            emph: emph!,
-            Ph: ph,
-            Uid: user.uid,
-            Username: username!);
+          Email: email!,
+          Image: image,
+          emph: emph!,
+          Ph: ph,
+          Uid: user.uid,
+          Username: username!,
+          rating: "4.5",
+        );
         Provider.of<AccountProvider>(context, listen: false)
             .updateuseraccount(userAccData);
         if (await permissions.Permission.locationWhenInUse.isGranted ||
@@ -255,59 +257,37 @@ class _WelcomeState extends State<Welcome> {
                         ),
                       ),
                     ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.01,
-                    ),
-                    SizedBox(
-                      height: 24,
-                      width: double.infinity,
-                      child: Center(
-                        child: Stack(
-                          children: [
-                            Center(
-                              child: Container(
-                                height: 1,
-                                width: MediaQuery.of(context).size.width * 0.65,
-                                color: Colors.black,
-                              ),
-                            ),
-                            Center(
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 50),
-                                child: Text(
-                                  ' Or ',
-                                  style:
-                                      TextStyle(backgroundColor: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.01,
-                    ),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        primary: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                      ),
-                      label: Text('Sign in with Google',
-                          style: TextStyle(color: Colors.black, fontSize: 16)),
-                      icon: Image.asset(
-                        'asset/images/google_logo.png',
-                        width: 35,
-                      ),
-                      onPressed: () async {
-                        signInWithGoogle();
-                      },
-                    ),
+                    // SizedBox(
+                    //   height: MediaQuery.of(context).size.height * 0.01,
+                    // ),
+                    // SizedBox(
+                    //   height: 24,
+                    //   width: double.infinity,
+                    //   child: Center(
+                    //     child: Stack(
+                    //       children: [
+                    //         Center(
+                    //           child: Container(
+                    //             height: 1,
+                    //             width: MediaQuery.of(context).size.width * 0.65,
+                    //             color: Colors.black,
+                    //           ),
+                    //         ),
+                    //         Center(
+                    //           child: Container(
+                    //             padding:
+                    //                 const EdgeInsets.symmetric(horizontal: 50),
+                    //             child: Text(
+                    //               ' Or ',
+                    //               style:
+                    //                   TextStyle(backgroundColor: Colors.white),
+                    //             ),
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    // ),
                     SizedBox(
                       height: 30,
                     ),

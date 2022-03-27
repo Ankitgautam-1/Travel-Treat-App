@@ -173,6 +173,8 @@ class _EmailVerifyState extends State<EmailVerify> {
               "Image":
                   "https://ugxqtrototfqtawjhnol.supabase.in/storage/v1/object/public/travel-treat-storage/Users/${uid}/${uid}",
               "emph": emph,
+              "rating": "4",
+              "last_5_ride_rating": ['4.0', '4.0', '4.0', '4.0', '4.0'],
             },
           ).then((value) async {
             final DatabaseReference db = FirebaseDatabase(app: app).reference();
@@ -187,12 +189,14 @@ class _EmailVerifyState extends State<EmailVerify> {
             );
             Provider.of<AccountProvider>(context, listen: false)
                 .updateuseraccount(UserAccount(
-                    Email: email,
-                    Image: profile,
-                    Ph: ph,
-                    Uid: uid,
-                    emph: emph,
-                    Username: username));
+              Email: email,
+              Image: profile,
+              Ph: ph,
+              Uid: uid,
+              emph: emph,
+              Username: username,
+              rating: "4.5",
+            ));
 
             SharedPreferences prefs = await SharedPreferences.getInstance();
             prefs.setString("Username", username);

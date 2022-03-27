@@ -2,8 +2,7 @@ import 'package:app/views/Maps.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:geolocator/geolocator.dart';
+
 import 'package:get/get.dart';
 import 'package:location_permissions/location_permissions.dart';
 import 'package:open_apps_settings/open_apps_settings.dart';
@@ -27,24 +26,47 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
   loc.Location location = loc.Location();
   final LocationPermissionLevel _permissionLevel =
       LocationPermissionLevel.locationAlways;
-
+  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Future<void> requestPermission(
-      LocationPermissionLevel permissionLevel) async {
+      LocationPermissionLevel permissionLevel, BuildContext context) async {
+    var state = true;
     Map<dynamic, dynamic> status = await [
-      permission.Permission.location,
+      permission.Permission.locationAlways,
     ].request();
-
-    if (status.values.contains(false)) {
-      print('status: ${status.values}');
-    } else {
+    print('status: ${status.values}');
+    for (int i = 0; i < status.values.length; i++) {
+      if (status.values.elementAt(i).toString() ==
+          "PermissionStatus.permanentlyDenied"||status.values.elementAt(i).toString() == "PermissionStatus.denied") {
+        state = false;
+      }
+    }
+    if (state) {
       _checkGps();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enable location permission by opening the settings',
+            style: GoogleFonts.lato(
+              textStyle: TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          backgroundColor: Colors.grey.shade900,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
   void _checkGps() async {
     bool locationServices = await location.serviceEnabled();
     print("val:$locationServices");
-    if (!locationServices) {
+    PermissionStatus permissionStatus = await LocationPermissions()
+        .checkPermissionStatus(level: _permissionLevel);
+    if (!locationServices && permissionStatus == PermissionStatus.denied) {
       Get.snackbar("Location Permission",
           "Location service is not enabled visting settings ");
       Future.delayed(
@@ -75,6 +97,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: Colors.white,
         body: Flex(
           direction: Axis.vertical,
@@ -88,6 +111,9 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        SizedBox(
+                          height: 40,
+                        ),
                         Text(
                           "Location Permission",
                           style: GoogleFonts.openSans(
@@ -119,7 +145,7 @@ class _LocationPermissoinState extends State<LocationPermissoin> {
                             ),
                           ),
                           onPressed: () async {
-                            await requestPermission(_permissionLevel);
+                            await requestPermission(_permissionLevel, context);
                           },
                         ),
                         SizedBox(

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:app/views/Dashboard.dart';
 import 'package:app/views/Maps.dart';
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as dio;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -155,16 +155,19 @@ class _PrcState extends State<Prc> {
         //     phoneAuthCredential); //by commneting this line you can add same ph-number
         try {
           print("1st");
-          Dio newimage = Dio();
+          print("images of user ${data[3]} ");
+          dio.Dio newimage = dio.Dio();
           String savePath =
               Directory.systemTemp.path + '/' + uid + "_profile_google";
           print("path =>$savePath");
-          await newimage.download(
-            data[0],
+          dio.Response<dynamic> photo = await newimage.download(
+            data[3],
             savePath,
-            options: Options(responseType: ResponseType.bytes),
+            options: dio.Options(responseType: dio.ResponseType.bytes),
           );
-          print("2nd");
+          File file = File(savePath);
+          print("photo =>${file.path}");
+
           firebase_storage.Reference ref = firebase_storage
               .FirebaseStorage.instance
               .ref()
@@ -173,9 +176,7 @@ class _PrcState extends State<Prc> {
 
           print("Uploading image");
           await ref.putFile(File(savePath));
-          print('Uploaded image');
-          Provider.of<ImageData>(context, listen: false)
-              .updateimage(File(savePath));
+
           print("3rd");
           final DatabaseReference db = FirebaseDatabase(app: app).reference();
           print("The db :$db");
@@ -194,7 +195,8 @@ class _PrcState extends State<Prc> {
                 Ph: data[2],
                 Uid: uid,
                 emph: data[3],
-                Username: data[0]);
+                Username: data[0],
+                rating: "4.5");
             Provider.of<AccountProvider>(context, listen: false)
                 .updateuseraccount(userAccData);
 

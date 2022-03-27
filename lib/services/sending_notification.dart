@@ -64,6 +64,8 @@ class Msg {
     String amount,
     String cab_type,
     String payment_type,
+    String user_rating,
+    String user_email,
   ) async {
     Uri url = Uri.parse("https://fcm.googleapis.com/fcm/send");
     dynamic bodydata = jsonEncode(<String, dynamic>{
@@ -74,6 +76,7 @@ class Msg {
           "pickuploc": {"lat": pickup_lat, "long": pickup_long},
           "destinationloc": {"lat": destination_lat, "long": destination_long},
           "user_uid": uid,
+          'user_rating': user_rating,
           "image":
               "https://ugxqtrototfqtawjhnol.supabase.in/storage/v1/object/public/travel-treat-storage/Users/$uid/$uid",
           "username": username,
@@ -87,7 +90,8 @@ class Msg {
           "phone": phone,
           "amount": amount,
           "cab_type": cab_type,
-          "payment_type": payment_type
+          "payment_type": payment_type,
+          "user_email": user_email,
         },
       },
       "to": token
@@ -155,6 +159,104 @@ class Msg {
       "data": {
         "type": "Ride cancel",
         "title": "Passenger",
+      },
+      "to": token
+    });
+    print("Url = $bodydata ");
+    try {
+      final response = await http.post(url, headers: _headers, body: bodydata);
+      if (response.statusCode == 200) {
+        try {
+          // If server returns an OK response, parse the JSON.
+          print("Json Data :----> ${response.body}");
+          dynamic a = response.body.runtimeType;
+          print("types :$a");
+        } catch (e) {
+          print("Failed $e");
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Error is :$e");
+      return null;
+    }
+  }
+
+  Future<void> sendCashPayment(
+    String token,
+  ) async {
+    Uri url = Uri.parse("https://fcm.googleapis.com/fcm/send");
+    dynamic bodydata = jsonEncode(<String, dynamic>{
+      "data": {
+        "type": "Payment Cash",
+        "title": "Passenger",
+      },
+      "to": token
+    });
+    print("Url = $bodydata ");
+    try {
+      final response = await http.post(url, headers: _headers, body: bodydata);
+      if (response.statusCode == 200) {
+        try {
+          // If server returns an OK response, parse the JSON.
+          print("Json Data :----> ${response.body}");
+          dynamic a = response.body.runtimeType;
+          print("types :$a");
+        } catch (e) {
+          print("Failed $e");
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Error is :$e");
+      return null;
+    }
+  }
+
+  Future<void> sendOnlinePayment(
+    String token,
+  ) async {
+    Uri url = Uri.parse("https://fcm.googleapis.com/fcm/send");
+    dynamic bodydata = jsonEncode(<String, dynamic>{
+      "data": {
+        "type": "Payment Online",
+        "title": "Passenger",
+      },
+      "to": token
+    });
+    print("Url = $bodydata ");
+    try {
+      final response = await http.post(url, headers: _headers, body: bodydata);
+      if (response.statusCode == 200) {
+        try {
+          // If server returns an OK response, parse the JSON.
+          print("Json Data :----> ${response.body}");
+          dynamic a = response.body.runtimeType;
+          print("types :$a");
+        } catch (e) {
+          print("Failed $e");
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Error is :$e");
+      return null;
+    }
+  }
+
+  Future<void> sendOnlinePaymentisDone(String token, String trip_docid) async {
+    Uri url = Uri.parse("https://fcm.googleapis.com/fcm/send");
+    dynamic bodydata = jsonEncode(<String, dynamic>{
+      "data": {
+        "type": "Payment Online Done",
+        "title": "Passenger",
+        "trip_docid": trip_docid
       },
       "to": token
     });

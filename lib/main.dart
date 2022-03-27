@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:app/Data/DirectionProvider.dart';
+import 'package:app/Data/connectivityProvider.dart';
 import 'package:app/Data/destinationmarkers.dart';
 import 'package:app/Data/driverProvider.dart';
 import 'package:app/Data/image.dart';
 import 'package:app/Data/pickuploc.dart';
+import 'package:app/Data/ratingProvider.dart';
 import 'package:app/Data/userData.dart';
 import 'package:app/models/pushnotification.dart';
 import 'package:app/models/userAccount.dart';
@@ -102,6 +104,9 @@ Future<void> main() async {
         ChangeNotifierProvider<DestinationMarkers>(
           create: (context) => DestinationMarkers(),
         ),
+        ChangeNotifierProvider<Connection>(
+          create: (context) => Connection(),
+        ),
         ChangeNotifierProvider<PickupMarkers>(
           create: (context) => PickupMarkers(),
         ),
@@ -110,6 +115,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider<DriverProvider>(
           create: (context) => DriverProvider(),
+        ),
+        ChangeNotifierProvider<RatingProvider>(
+          create: (context) => RatingProvider(),
         ),
       ],
       child: GetMaterialApp(
@@ -135,7 +143,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  var uid, image, username, ph, email, emph;
+  var uid, image, username, ph, email, emph, rating;
   bool intro = true;
   FirebaseApp app;
   loc.Location location = loc.Location();
@@ -165,14 +173,17 @@ class _MyAppState extends State<MyApp> {
       image = prefs.getString('Image');
       ph = prefs.getString('Ph');
       emph = prefs.getString("emph");
+      rating = prefs.getString('rating');
       Provider.of<ImageData>(context, listen: false).updateimage(File(image));
       UserAccount userAccData = UserAccount(
-          Email: email,
-          Image: image ?? "",
-          Ph: ph,
-          Uid: uid,
-          emph: emph,
-          Username: username);
+        Email: email,
+        Image: image ?? "",
+        Ph: ph,
+        Uid: uid,
+        emph: emph,
+        Username: username,
+        rating: rating ?? "4.5",
+      );
       Provider.of<AccountProvider>(context, listen: false)
           .updateuseraccount(userAccData);
       if (image == "") {
@@ -241,7 +252,3 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-
-/*TrailPage(
-                  app:
-                      app)  */
