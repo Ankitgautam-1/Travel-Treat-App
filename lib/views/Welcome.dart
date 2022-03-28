@@ -299,7 +299,7 @@ class _WelcomeState extends State<Welcome> {
                                 color: Colors.black, fontSize: 16)),
                         GestureDetector(
                           onTap: () {
-                            Get.off(SignUp(app: app));
+                            Get.to(SignUp(app: app));
                           },
                           child: Text(' Sign Up',
                               style: GoogleFonts.roboto(

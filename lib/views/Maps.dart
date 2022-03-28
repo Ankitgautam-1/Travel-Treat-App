@@ -4376,7 +4376,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                                 width: 10,
                                                               ),
                                                               Text(
-                                                                  "  ${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
+                                                                  "    ${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
                                                                       " KM",
                                                                   style: GoogleFonts.openSans(
                                                                       fontSize:
@@ -4765,7 +4765,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                               FaIcon(
                                                                   Iconsax.map5),
                                                               Text(
-                                                                  "    ${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
+                                                                  "      ${Provider.of<DirectionsProvider>(context, listen: false).distance.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).distance.toString().length)} " +
                                                                       " KM",
                                                                   style: GoogleFonts.openSans(
                                                                       fontSize:
@@ -4779,7 +4779,7 @@ class _MapsState extends State<Maps> with AutomaticKeepAliveClientMixin {
                                                               Icon(Iconsax
                                                                   .clock5),
                                                               Text(
-                                                                  "   ${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)}" +
+                                                                  "     ${Provider.of<DirectionsProvider>(context, listen: false).time.toString().substring(0, Provider.of<DirectionsProvider>(context, listen: false).time.toString().length > 4 ? 4 : Provider.of<DirectionsProvider>(context, listen: false).time.toString().length)}" +
                                                                       " Min",
                                                                   style: GoogleFonts.openSans(
                                                                       fontSize:
